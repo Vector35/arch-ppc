@@ -5,8 +5,9 @@
 using namespace std;
 
 #include <binaryninjaapi.h>
-//#define MYLOG(...) while(0);
-#define MYLOG BinaryNinja::LogDebug
+#define MYLOG(...) while(0);
+//#define MYLOG BinaryNinja::LogDebug
+
 #include "lowlevelilinstruction.h"
 using namespace BinaryNinja; // for ::LogDebug, etc.
 
@@ -197,12 +198,12 @@ class PowerpcArchitecture: public Architecture
 					break;
 				case PPC_OP_IMM:
 					//MYLOG("pushing an integer\n");
-					MYLOG(buf, "0x%X", op->imm);
+					sprintf(buf, "0x%X", op->imm);
 					result.push_back(InstructionTextToken(IntegerToken, buf, op->imm, 4));
 					break;
 				case PPC_OP_MEM:
 					// eg: lwz r11, 8(r11)
-					MYLOG(buf, "%d", op->mem.disp);
+					sprintf(buf, "%d", op->mem.disp);
 					result.push_back(InstructionTextToken(IntegerToken, buf, op->mem.disp, 4));
 
 					result.push_back(InstructionTextToken(TextToken, "("));
@@ -976,20 +977,24 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 		if(il->GetInstructionCount() < 4)
 			return false;
 
-		// check the lis
+		// check the lis, "lis <baseReg>, offsToGot
 		LowLevelILInstruction lis = il->GetInstruction(0);
 		if(lis.operation != LLIL_SET_REG)
+			return false;
+		LowLevelILInstruction rhsOperand = lis.GetSourceExpr<LLIL_SET_REG>();
+		if ((rhsOperand.operation != LLIL_CONST) && (rhsOperand.operation != LLIL_CONST_PTR))
+			return false;
+		LowLevelILInstruction regGotBase = lis.GetDestRegister<LLIL_SET_REG>();
+		if (lisOperand.operation != LLIL_REG)
 			return false;
 		
 		LowLevelILInstruction lwz = il->GetInstruction(1);
 		if(lis.operation != LLIL_SET_REG)
 			return false;
-		
 
 		LowLevelILInstruction mtctr = il->GetInstruction(2);
 		if(lis.operation != LLIL_SET_REG)
 			return false;
-		
 
 		LowLevelILInstruction bctr = il->GetInstruction(3);
 		if(lis.operation != LLIL_JUMP)

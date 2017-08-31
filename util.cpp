@@ -1,9 +1,8 @@
-
 #include "disassembler.h"
 
 #include <binaryninjaapi.h>
-//#define MYLOG(...) while(0);
-#define MYLOG BinaryNinja::LogDebug
+#define MYLOG(...) while(0);
+//#define MYLOG BinaryNinja::LogDebug
 
 void printOperandVerbose(decomp_result *res, cs_ppc_op *op)
 {

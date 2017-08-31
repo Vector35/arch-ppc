@@ -8,8 +8,8 @@ architecture plugin picture.
 #include <string.h> // strcpy, etc.
 
 #include <binaryninjaapi.h>
-//#define MYLOG(...) while(0);
-#define MYLOG BinaryNinja::LogDebug
+#define MYLOG(...) while(0);
+//#define MYLOG BinaryNinja::LogDebug
 
 #include "disassembler.h"
 
