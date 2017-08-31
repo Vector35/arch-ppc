@@ -201,14 +201,14 @@ class PowerpcArchitecture: public Architecture
 					sprintf(buf, "0x%X", op->imm);
 
 					switch(insn->id) {
-						case PPC_INS_B:
-						case PPC_INS_BA:
-						case PPC_INS_BC:
-						case PPC_INS_BCCTR:
-						case PPC_INS_BCCTRL:
-						case PPC_INS_BCL:
-						case PPC_INS_BCLR:
-						case PPC_INS_BCLRL:
+						//case PPC_INS_B:
+						//case PPC_INS_BA:
+						//case PPC_INS_BC:
+						//case PPC_INS_BCCTR:
+						//case PPC_INS_BCCTRL:
+						//case PPC_INS_BCL:
+						//case PPC_INS_BCLR:
+						//case PPC_INS_BCLRL:
 
 						case PPC_INS_BL:
 						case PPC_INS_BLA:
@@ -251,7 +251,6 @@ class PowerpcArchitecture: public Architecture
 
 	virtual bool GetInstructionLowLevelIL(const uint8_t* data, uint64_t addr, size_t& len, LowLevelILFunction& il) override
 	{
-		int i;
 		bool rc = false;
 
 		//if(addr >= 0x10000300 && addr <= 0x10000320) {
@@ -1115,6 +1114,59 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 	}
 };
 
+class PpcSvr4CallingConvention: public CallingConvention
+{
+public:
+	PpcSvr4CallingConvention(Architecture* arch): CallingConvention(arch, "svr4")
+	{
+	}
+
+
+	virtual vector<uint32_t> GetIntegerArgumentRegisters() override
+	{
+		return vector<uint32_t>{
+			PPC_REG_R3, PPC_REG_R4, PPC_REG_R5, PPC_REG_R6,
+			PPC_REG_R7, PPC_REG_R8, PPC_REG_R9,	PPC_REG_R10
+			/* remaining arguments onto stack */
+		};
+	}
+
+
+	virtual vector<uint32_t> GetFloatArgumentRegisters() override
+	{
+		return vector<uint32_t>{ 
+			PPC_REG_F1, PPC_REG_F2, PPC_REG_F3, PPC_REG_F4,
+			PPC_REG_F5, PPC_REG_F6, PPC_REG_F7, PPC_REG_F8,
+			PPC_REG_F9, PPC_REG_F10, PPC_REG_F11, PPC_REG_F12,
+			PPC_REG_F13
+		};
+	}
+
+
+	virtual vector<uint32_t> GetCallerSavedRegisters() override
+	{
+		return vector<uint32_t>{
+			PPC_REG_R13, PPC_REG_R14, PPC_REG_R15, PPC_REG_R16,
+			PPC_REG_R17, PPC_REG_R18, PPC_REG_R19, PPC_REG_R20,
+			PPC_REG_R21, PPC_REG_R22, PPC_REG_R23, PPC_REG_R24,
+			PPC_REG_R25, PPC_REG_R26, PPC_REG_R27, PPC_REG_R28,
+			PPC_REG_R29, PPC_REG_R30, PPC_REG_R31
+		};
+	}
+
+
+	virtual uint32_t GetIntegerReturnValueRegister() override
+	{
+		return PPC_REG_R3;
+	}
+
+
+	virtual uint32_t GetFloatReturnValueRegister() override
+	{
+		return PPC_REG_F1;
+	}
+};
+
 extern "C"
 {
 	BINARYNINJAPLUGIN bool CorePluginInit()
@@ -1122,16 +1174,20 @@ extern "C"
 		MYLOG("ARCH POWERPC compiled at %s %s\n", __DATE__, __TIME__);
 
 		/* create, register arch in global list of available architectures */
-		Architecture* powerpc = new PowerpcArchitecture("ppc", BigEndian);
-		Architecture::Register(powerpc);
+		Architecture* ppc = new PowerpcArchitecture("ppc", BigEndian);
+		Architecture::Register(ppc);
 
 		/* calling conventions */
-		
+		Ref<CallingConvention> conv;
+		conv = new PpcSvr4CallingConvention(ppc);
+		ppc->RegisterCallingConvention(conv);
+		ppc->SetDefaultCallingConvention(conv);
+	
 		/* function recognizer */
-		powerpc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
-		powerpc->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
-		powerpc->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
-		powerpc->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
+		ppc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
+		ppc->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
+		ppc->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
+		ppc->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
 
 		/* call the STATIC RegisterArchitecture with "Mach-O"
 			which invokes the "Mach-O" INSTANCE of RegisterArchitecture,
@@ -1142,8 +1198,14 @@ extern "C"
 			"Mach-O", /* name of the binary view type */
 			MACHO_CPU_TYPE_POWERPC, /* id (key in m_arch map) */
 			BigEndian,
-			//LittleEndian,
-			powerpc /* the architecture */
+			ppc /* the architecture */
+		);
+
+		BinaryViewType::RegisterArchitecture(
+			"Mach-O", /* name of the binary view type */
+			MACHO_CPU_TYPE_POWERPC, /* id (key in m_arch map) */
+			LittleEndian,
+			ppc /* the architecture */
 		);
 
 		/* for e_machine field in Elf32_Ehdr */
@@ -1155,8 +1217,16 @@ extern "C"
 			"ELF", /* name of the binary view type */
 			EM_PPC, /* id (key in m_arch map) */
 			BigEndian,
-			powerpc /* the architecture */
+			ppc /* the architecture */
 		);
+
+		BinaryViewType::RegisterArchitecture(
+			"ELF", /* name of the binary view type */
+			EM_PPC, /* id (key in m_arch map) */
+			LittleEndian,
+			ppc /* the architecture */
+		);
+
 		return true;
 	}
 }
