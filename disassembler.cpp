@@ -7,33 +7,37 @@ architecture plugin picture.
 
 #include <string.h> // strcpy, etc.
 
+#include <binaryninjaapi.h>
+//#define MYLOG(...) while(0);
+#define MYLOG BinaryNinja::LogDebug
+
 #include "disassembler.h"
 
 /* have to do this... while options can be toggled after initialization (thru
 	cs_option(), the modes cannot, and endianness is considered a mode) */
-thread_local csh handle_lil = NULL;
-thread_local csh handle_big = NULL;
+thread_local csh handle_lil = 0;
+thread_local csh handle_big = 0;
 
 extern "C" int
 powerpc_init(void)
 {
 	int rc = -1;
 
-	printf("powerpc_init()\n");
+	MYLOG("powerpc_init()\n");
 
 	if(handle_lil || handle_big) {
-		printf("ERROR: already initialized!\n");
+		MYLOG("ERROR: already initialized!\n");
 		goto cleanup;
 	}
 
 	/* initialize capstone handle */
 	if(cs_open(CS_ARCH_PPC, CS_MODE_BIG_ENDIAN, &handle_big) != CS_ERR_OK) {
-		printf("ERROR: cs_open()\n");
+		MYLOG("ERROR: cs_open()\n");
 		goto cleanup;
 	}
 
 	if(cs_open(CS_ARCH_PPC, CS_MODE_LITTLE_ENDIAN, &handle_lil) != CS_ERR_OK) {
-		printf("ERROR: cs_open()\n");
+		MYLOG("ERROR: cs_open()\n");
 		goto cleanup;
 	}
 
@@ -54,12 +58,12 @@ powerpc_release(void)
 {
 	if(handle_lil) {
 		cs_close(&handle_lil);
-		handle_lil = NULL;
+		handle_lil = 0;
 	}
 
 	if(handle_big) {
 		cs_close(&handle_big);
-		handle_big = NULL;
+		handle_big = 0;
 	}
 }
 
@@ -116,7 +120,7 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	// } cs_ppc_op;
 
 	csh handle;
-	cs_insn *insn = NULL; /* instruction information 
+	cs_insn *insn = 0; /* instruction information 
 					cs_disasm() will allocate array of cs_insn here */
 
 	/* which handle to use?
@@ -128,7 +132,7 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	/* call */
 	int n = cs_disasm(handle_big, data, size, addr, 1, &insn);
 	if(n != 1) {
-		//printf("ERROR: cs_disasm() returned %d (cs_errno:%d)\n", n, cs_errno(handle));
+		MYLOG("ERROR: cs_disasm() returned %d (cs_errno:%d)\n", n, cs_errno(handle));
 		goto cleanup;
 	}
 
@@ -143,13 +147,13 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	cleanup:
 	if(insn) {
 		cs_free(insn, 1);
-		insn = NULL;
+		insn = 0;
 	}
 	return rc;
 }
 
 extern "C" int 
-powerpc_disassemble(struct decomp_result *res, char *buf, int len)
+powerpc_disassemble(struct decomp_result *res, char *buf, size_t len)
 {
 	/* ideally the "heavy" string disassemble result is derived from light data
 		in the decomposition result, but capstone doesn't make this distinction
@@ -157,7 +161,7 @@ powerpc_disassemble(struct decomp_result *res, char *buf, int len)
 	int rc = -1;
 
 	if(len < strlen(res->insn.mnemonic)+strlen(res->insn.op_str) + 2) {
-		printf("ERROR: insufficient room\n");
+		MYLOG("ERROR: insufficient room\n");
 		goto cleanup;
 	}
 
@@ -173,8 +177,6 @@ powerpc_disassemble(struct decomp_result *res, char *buf, int len)
 extern "C" const char *
 powerpc_reg_to_str(uint32_t rid)
 {
-	csh handle;
-
 	if(!handle_lil) {
 		powerpc_init();
 	}

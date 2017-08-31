@@ -20,7 +20,7 @@ using namespace BinaryNinja;
 #define OTI_IMM_BIAS 1024
 
 //#define MYLOG(...) while(0);
-#define MYLOG(...) printf(__VA_ARGS__);
+#define MYLOG BinaryNinja::LogDebug
 
 static ExprId operToIL(LowLevelILFunction &il, struct cs_ppc_op *op,
 	int options=0, uint64_t extra=0)

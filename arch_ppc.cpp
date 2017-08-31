@@ -4,14 +4,12 @@
 using namespace std;
 
 #include <binaryninjaapi.h>
+//#define MYLOG(...) while(0);
+#define MYLOG BinaryNinja::LogDebug
 #include "lowlevelilinstruction.h"
-using namespace BinaryNinja; // for ::MYLOG, etc.
+using namespace BinaryNinja; // for ::LogDebug, etc.
 
 #include "disassembler.h"
-
-//#define MYLOG LogInfo /* careful! VERY slow */
-#define MYLOG(...) while(0);
-
 
 #include "il.h"
 #include "util.h"
@@ -193,17 +191,17 @@ class PowerpcArchitecture: public Architecture
 
 			switch(op->type) {
 				case PPC_OP_REG:
-					//printf("pushing a register\n");
+					//MYLOG("pushing a register\n");
 					result.push_back(InstructionTextToken(RegisterToken, GetRegisterName(op->reg)));
 					break;
 				case PPC_OP_IMM:
-					//printf("pushing an integer\n");
-					sprintf(buf, "0x%X", op->imm);
+					//MYLOG("pushing an integer\n");
+					MYLOG(buf, "0x%X", op->imm);
 					result.push_back(InstructionTextToken(IntegerToken, buf, op->imm, 4));
 					break;
 				case PPC_OP_MEM:
 					// eg: lwz r11, 8(r11)
-					sprintf(buf, "%d", op->mem.disp);
+					MYLOG(buf, "%d", op->mem.disp);
 					result.push_back(InstructionTextToken(IntegerToken, buf, op->mem.disp, 4));
 
 					result.push_back(InstructionTextToken(TextToken, "("));
@@ -213,12 +211,12 @@ class PowerpcArchitecture: public Architecture
 				case PPC_OP_CRX:
 				case PPC_OP_INVALID:
 				default:
-					//printf("pushing a ???\n");
+					//MYLOG("pushing a ???\n");
 					result.push_back(InstructionTextToken(TextToken, "???"));
 			}
 	
 			if(i < ppc->op_count-1) {
-				//printf("pushing a comma\n");
+				//MYLOG("pushing a comma\n");
 				result.push_back(InstructionTextToken(OperandSeparatorToken, ", "));
 			}		
 		}
@@ -235,7 +233,7 @@ class PowerpcArchitecture: public Architecture
 		bool rc = false;
 
 		//if(addr >= 0x10000300 && addr <= 0x10000320) {
-		//	printf("%s(data, 0x%llX, 0x%zX, il)\n", __func__, addr, len);
+		//	MYLOG("%s(data, 0x%llX, 0x%zX, il)\n", __func__, addr, len);
 		//}
 
 		struct decomp_result res;
@@ -403,7 +401,7 @@ class PowerpcArchitecture: public Architecture
 				return "xer";
 			*/
 			default:
-				printf("ERROR: unrecognized writeType\n");
+				MYLOG("ERROR: unrecognized writeType\n");
 				return "none";
 		}
 	}
@@ -967,7 +965,7 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 	private:
 	bool RecognizeELFPLTEntries(BinaryView* data, Function* func, LowLevelILFunction* il)
 	{
-		printf("%s() ohh yea!\n", __func__);
+		MYLOG("%s()\n", __func__);
 
 		// lis   r11, 0x1002     ; r11 -> base of GOT
 		// lwz   r11, ???(r11)   ; get GOT[???]
@@ -1001,7 +999,8 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 
 	bool RecognizeMachoPLTEntries(BinaryView* data, Function* func, LowLevelILFunction* il)
 	{
-		printf("%s() ohh yea!\n", __func__);
+		MYLOG("%s()\n", __func__);
+
 		return false;
 	}
 
@@ -1020,10 +1019,10 @@ extern "C"
 {
 	BINARYNINJAPLUGIN bool CorePluginInit()
 	{
-		printf("ARCH POWERPC compiled at %s %s\n", __DATE__, __TIME__);
+		MYLOG("ARCH POWERPC compiled at %s %s\n", __DATE__, __TIME__);
 
 		/* create, register arch in global list of available architectures */
-		Architecture* powerpc = new PowerpcArchitecture("powerpc", BigEndian);
+		Architecture* powerpc = new PowerpcArchitecture("ppc", BigEndian);
 		Architecture::Register(powerpc);
 
 		/* calling conventions */

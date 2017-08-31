@@ -63,7 +63,7 @@ extern "C" int powerpc_init(void);
 extern "C" void powerpc_release(void);
 extern "C" int powerpc_decompose(const uint8_t *data, int size, uint32_t addr, 
 	bool lil_end, struct decomp_result *result);
-extern "C" int powerpc_disassemble(struct decomp_result *, char *buf, int len);
+extern "C" int powerpc_disassemble(struct decomp_result *, char *buf, size_t len);
 
 extern "C" const char *powerpc_reg_to_str(uint32_t rid);
 
