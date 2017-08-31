@@ -199,7 +199,27 @@ class PowerpcArchitecture: public Architecture
 				case PPC_OP_IMM:
 					//MYLOG("pushing an integer\n");
 					sprintf(buf, "0x%X", op->imm);
-					result.push_back(InstructionTextToken(IntegerToken, buf, op->imm, 4));
+
+					switch(insn->id) {
+						case PPC_INS_B:
+						case PPC_INS_BA:
+						case PPC_INS_BC:
+						case PPC_INS_BCCTR:
+						case PPC_INS_BCCTRL:
+						case PPC_INS_BCL:
+						case PPC_INS_BCLR:
+						case PPC_INS_BCLRL:
+
+						case PPC_INS_BL:
+						case PPC_INS_BLA:
+						case PPC_INS_BLR:
+						case PPC_INS_BLRL:
+							result.push_back(InstructionTextToken(PossibleAddressToken, buf, op->imm, 4));
+							break;
+						default:
+							result.push_back(InstructionTextToken(IntegerToken, buf, op->imm, 4));
+					}
+
 					break;
 				case PPC_OP_MEM:
 					// eg: lwz r11, 8(r11)
@@ -1014,7 +1034,7 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 			if(regGotBase != tmp.GetSourceRegister<LLIL_REG>()) // lwz must read from same reg
 				return false;
 
-			entry = regGotBase;
+			entry = constGotBase;
 		}
 		// r11 + ???   (LLIL_ADD)
 		else if(tmp.operation == LLIL_ADD) {
@@ -1031,7 +1051,7 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 			if(rhs.operation != LLIL_CONST)
 				return false;
 
-			entry = regGotBase + rhs.GetConstant();
+			entry = constGotBase + rhs.GetConstant();
 		}
 		else {
 			return false;
@@ -1063,6 +1083,16 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 			return false;
 		if(tmp.GetSourceRegister<LLIL_REG>() != regJump)
 			return false;
+
+		// done!
+		Ref<Symbol> sym = data->GetSymbolByAddress(entry);
+		if (!sym) {
+			return false;
+		}
+		if (sym->GetType() != ImportAddressSymbol) {
+			return false;
+		}
+		data->DefineImportedFunction(sym, func);
 
 		return true;
 	}
@@ -1099,6 +1129,9 @@ extern "C"
 		
 		/* function recognizer */
 		powerpc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
+		powerpc->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
+		powerpc->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
+		powerpc->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
 
 		/* call the STATIC RegisterArchitecture with "Mach-O"
 			which invokes the "Mach-O" INSTANCE of RegisterArchitecture,
