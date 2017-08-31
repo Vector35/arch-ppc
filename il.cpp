@@ -579,7 +579,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			break;
 
 		case PPC_INS_BLR: /* branch to LR */
-			ei0 = il.Call(il.Register(4, PPC_REG_R31));
+			ei0 = il.Return(il.Register(4, PPC_REG_LR));
 			conditionExecute(il, ei0, -1, ppc);
 			rc = false;
 			break;
