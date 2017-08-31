@@ -669,10 +669,6 @@ class PowerpcArchitecture: public Architecture
 			PPC_REG_VS56, PPC_REG_VS57, PPC_REG_VS58, PPC_REG_VS59, PPC_REG_VS60, PPC_REG_VS61, PPC_REG_VS62, PPC_REG_VS63
 		};
 
-		LogInfo("%s() returning %lu registers, eg: %d %d %d %d %d %d %d...\n",
-			__func__, result.size(), PPC_REG_CARRY, PPC_REG_CR0, PPC_REG_F0,
-			PPC_REG_LR, PPC_REG_R0, PPC_REG_V0, PPC_REG_VS63);
-
 		return result;
 	}
 
