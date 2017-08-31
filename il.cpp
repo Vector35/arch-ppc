@@ -121,26 +121,30 @@ static ExprId operToIL(LowLevelILFunction &il, struct cs_ppc_op *op,
    members of these predefined sets by responding to
    GetFlagsRrequiredForFlagCondition()
 */
-static BNLowLevelILFlagCondition bc2fc(int csBranchCode)
+static ExprId bc2fc(LowLevelILFunction& il, int csBranchCode)
 {
 	MYLOG("switching on csBranchCode: %d\n", csBranchCode);
 	switch(csBranchCode) {
 		case PPC_BC_LT:
-			return LLFC_ULT;
+			return il.FlagCondition(LLFC_ULT);
 		case PPC_BC_LE: /* (a <= b) or not-greater-than "ng" */
-			return LLFC_ULE;
+			return il.FlagCondition(LLFC_ULE);
 		case PPC_BC_EQ:
-			return LLFC_E;
+			return il.FlagCondition(LLFC_E);
 		case PPC_BC_GE: /* (a >= b) or not-less-than "nl" */
-			return LLFC_UGE;
+			return il.FlagCondition(LLFC_UGE);
 		case PPC_BC_GT:
-			return LLFC_UGT;
+			return il.FlagCondition(LLFC_UGT);
 		case PPC_BC_NE:
-			return LLFC_NE;
+			return il.FlagCondition(LLFC_NE);
 		case PPC_BC_SO: /* summary overflow */
+			return il.Flag(IL_FLAG_SO);
 		case PPC_BC_NS: /* not summary overflow */
+			return il.Not(0, il.Flag(IL_FLAG_SO));
 		case PPC_BC_UN: /* unordered (after floating-point comparison) (AKA "uo") */
+			return il.Flag(IL_FLAG_UN);
 		case PPC_BC_NU: /* not unordered */
+			return il.Not(0, il.Flag(IL_FLAG_UN));
 		default:
 			MYLOG("%s() returning unimplemented!\n", __func__);
 			return (BNLowLevelILFlagCondition)-1;
@@ -162,7 +166,7 @@ static void ConditionalJump(Architecture* arch, LowLevelILFunction& il,
 		return;
 	}
 
-	ExprId clause = il.FlagCondition(bc2fc(csBranchCode));
+	ExprId clause = bc2fc(il, csBranchCode);
 
 	BNLowLevelILLabel *trueLabel = il.GetLabelForAddress(arch, addrTrue);
 	BNLowLevelILLabel *falseLabel = il.GetLabelForAddress(arch, addrFalse);
@@ -222,55 +226,12 @@ static void conditionExecute(LowLevelILFunction &il, ExprId trueIL0,
 		return;
 	}
 
-	int lutFlags_cr0[4] = { IL_FLAG_LT,   IL_FLAG_GT,   IL_FLAG_EQ,   IL_FLAG_SO   };
-	int lutFlags_cr1[4] = { IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1 };
-	int lutFlags_cr2[4] = { IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2 };
-	int lutFlags_cr3[4] = { IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3 };
-	int lutFlags_cr4[4] = { IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4 };
-	int lutFlags_cr5[4] = { IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5 };
-	int lutFlags_cr6[4] = { IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6 };
-	int lutFlags_cr7[4] = { IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7 };
-
-	/* we're conditional now - the question is just which of the cr0..cr7 do
-		we read the flags from? */
-
-	int *lutFlags = lutFlags_cr0;
-
-	if(ppc->op_count >= 1 && ppc->operands[0].type == PPC_OP_REG) {
-		switch(ppc->operands[0].reg) {
-			case PPC_REG_CR1:
-				lutFlags = lutFlags_cr1;
-				break;
-			case PPC_REG_CR2:
-				lutFlags = lutFlags_cr2;
-				break;
-			case PPC_REG_CR3:
-				lutFlags = lutFlags_cr3;
-				break;
-			case PPC_REG_CR4:
-				lutFlags = lutFlags_cr4;
-				break;
-			case PPC_REG_CR5:
-				lutFlags = lutFlags_cr5;
-				break;
-			case PPC_REG_CR6:
-				lutFlags = lutFlags_cr6;
-				break;
-			case PPC_REG_CR7:
-				lutFlags = lutFlags_cr7;
-				break;
-			default:
-				MYLOG("ERROR: expected CRX register, got: %d\n", ppc->operands[0].reg);
-				break;
-		}
-	}
-
 	// TODO: get sign-sensitivity right
 	// conditional branches simply look at the flags bits
 	// cmp vs. cmpl does signed vs. unsigned
 	/* if statement */
 	LowLevelILLabel trueLabel, falseLabel;
-	ExprId clause = il.FlagCondition(bc2fc(ppc->bc));
+	ExprId clause = bc2fc(il, ppc->bc);
 	il.AddInstruction(il.If(clause, trueLabel, falseLabel));
 	/* true clause */
 	il.MarkLabel(trueLabel);
@@ -750,6 +711,10 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			il.AddInstruction(il.SetRegister(4, oper0->reg, operToIL(il, oper1)));
 			break;
 
+		case PPC_INS_SC:
+			il.AddInstruction(il.SystemCall());
+			break;
+
 		case PPC_INS_BCL:
 		case PPC_INS_BCLR:
 		case PPC_INS_BCLRL:
@@ -1115,7 +1080,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_RLWIMI:
 		case PPC_INS_RLWINM:
 		case PPC_INS_RLWNM:
-		case PPC_INS_SC:
 		case PPC_INS_SLBIA:
 		case PPC_INS_SLBIE:
 		case PPC_INS_SLBMFEE:

@@ -21,11 +21,12 @@ if a==b then c=0b001 (not setting SO, setting EQ)
 #define IL_FLAG_GT 1
 #define IL_FLAG_EQ 2
 #define IL_FLAG_SO 3
+#define IL_FLAG_UN 4
 /* in cr1... */
-#define IL_FLAG_LT_1 4
-#define IL_FLAG_GT_1 5
-#define IL_FLAG_EQ_1 6
-#define IL_FLAG_SO_1 7
+//#define IL_FLAG_LT_1 4
+//#define IL_FLAG_GT_1 5
+//#define IL_FLAG_EQ_1 6
+//#define IL_FLAG_SO_1 7
 /* and so on... */
 #define IL_FLAG_LT_2 8
 #define IL_FLAG_GT_2 9

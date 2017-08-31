@@ -308,6 +308,7 @@ class PowerpcArchitecture: public Architecture
 		MYLOG("%s()\n", __func__);
 		return vector<uint32_t> {
 			IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
+			IL_FLAG_UN,
 
 			/*
 			IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1,
@@ -318,7 +319,6 @@ class PowerpcArchitecture: public Architecture
 			IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
 			IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
 			*/
-
 			IL_FLAG_XER_SO, IL_FLAG_XER_OV, IL_FLAG_XER_CA
 		};
 	}
@@ -1163,6 +1163,35 @@ public:
 	}
 };
 
+class PpcLinuxSyscallCallingConvention: public CallingConvention
+{
+public:
+	PpcLinuxSyscallCallingConvention(Architecture* arch): CallingConvention(arch, "linux-syscall")
+	{
+	}
+
+	virtual vector<uint32_t> GetIntegerArgumentRegisters() override
+	{
+		return vector<uint32_t>{
+			PPC_REG_R0,
+			PPC_REG_R3, PPC_REG_R4, PPC_REG_R5, PPC_REG_R6,
+			PPC_REG_R7, PPC_REG_R8, PPC_REG_R9,	PPC_REG_R10
+		};
+	}
+
+	virtual vector<uint32_t> GetCallerSavedRegisters() override
+	{
+		return vector<uint32_t>{
+			PPC_REG_R3
+		};
+	}
+
+	virtual uint32_t GetIntegerReturnValueRegister() override
+	{
+		return PPC_REG_R3;
+	}
+};
+
 extern "C"
 {
 	BINARYNINJAPLUGIN bool CorePluginInit()
@@ -1178,7 +1207,9 @@ extern "C"
 		conv = new PpcSvr4CallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
 		ppc->SetDefaultCallingConvention(conv);
-	
+		conv = new PpcLinuxSyscallCallingConvention(ppc);
+		ppc->RegisterCallingConvention(conv);
+
 		/* function recognizer */
 		ppc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 		ppc->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
