@@ -968,39 +968,103 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 	bool RecognizeELFPLTEntries(BinaryView* data, Function* func, LowLevelILFunction* il)
 	{
 		MYLOG("%s()\n", __func__);
+		LowLevelILInstruction lis, lwz, mtctr, tmp;
+		int64_t entry, constGotBase;
+		uint32_t regGotBase, regJump;
 
 		// lis   r11, 0x1002     ; r11 -> base of GOT
 		// lwz   r11, ???(r11)   ; get GOT[???]
 		// mtctr r11             ; move to ctr
 		// bctr                  ; branch to ctr
-
-		if(il->GetInstructionCount() < 4)
+		if(il->GetInstructionCount() != 4)
 			return false;
 
-		// check the lis, "lis <baseReg>, offsToGot
-		LowLevelILInstruction lis = il->GetInstruction(0);
+		//
+		// LIS   r11, 0x1002
+		//
+		lis = il->GetInstruction(0);
 		if(lis.operation != LLIL_SET_REG)
 			return false;
-		LowLevelILInstruction rhsOperand = lis.GetSourceExpr<LLIL_SET_REG>();
-		if ((rhsOperand.operation != LLIL_CONST) && (rhsOperand.operation != LLIL_CONST_PTR))
+		/* get the constant, address of GOT */
+		tmp = lis.GetSourceExpr<LLIL_SET_REG>();
+		if ((tmp.operation != LLIL_CONST) && (tmp.operation != LLIL_CONST_PTR))
 			return false;
-		LowLevelILInstruction regGotBase = lis.GetDestRegister<LLIL_SET_REG>();
-		if (lisOperand.operation != LLIL_REG)
-			return false;
+		constGotBase = tmp.GetConstant();
+		/* get the destination register, is assigned the address of GOT */
+		regGotBase = lis.GetDestRegister<LLIL_SET_REG>();
 		
-		LowLevelILInstruction lwz = il->GetInstruction(1);
-		if(lis.operation != LLIL_SET_REG)
+		//
+		// LWZ   r11, ???(r11)
+		//
+		lwz = il->GetInstruction(1);
+		if(lwz.operation != LLIL_SET_REG)
 			return false;
 
-		LowLevelILInstruction mtctr = il->GetInstruction(2);
-		if(lis.operation != LLIL_SET_REG)
+		if(lwz.GetDestRegister<LLIL_SET_REG>() != regGotBase) // lwz must assign to same reg
 			return false;
 
-		LowLevelILInstruction bctr = il->GetInstruction(3);
-		if(lis.operation != LLIL_JUMP)
+		tmp = lwz.GetSourceExpr<LLIL_SET_REG>(); // lwz must read from LOAD
+		if(tmp.operation != LLIL_LOAD)
 			return false;
 
-		return false;
+		// "dereference" the load(...) to get either:
+		tmp = tmp.GetSourceExpr<LLIL_LOAD>();
+		// r11         (LLIL_REG)
+		if(tmp.operation == LLIL_REG) {
+			if(regGotBase != tmp.GetSourceRegister<LLIL_REG>()) // lwz must read from same reg
+				return false;
+
+			entry = regGotBase;
+		}
+		// r11 + ???   (LLIL_ADD)
+		else if(tmp.operation == LLIL_ADD) {
+			LowLevelILInstruction lhs, rhs;
+
+			lhs = tmp.GetLeftExpr<LLIL_ADD>();
+			rhs = tmp.GetRightExpr<LLIL_ADD>();
+
+			if(lhs.operation != LLIL_REG)
+				return false;
+			if(lhs.GetSourceRegister<LLIL_REG>() != regGotBase)
+				return false;
+
+			if(rhs.operation != LLIL_CONST)
+				return false;
+
+			entry = regGotBase + rhs.GetConstant();
+		}
+		else {
+			return false;
+		}
+
+		//
+		// MTCTR
+		//
+		mtctr = il->GetInstruction(2);
+		if(mtctr.operation != LLIL_SET_REG)
+			return false;
+		/* from regGotBase */
+		tmp = mtctr.GetSourceExpr();
+		if(tmp.operation != LLIL_REG)
+			return false;
+		if(tmp.GetSourceRegister<LLIL_REG>() != regGotBase)
+			return false;
+		/* to new register (probably CTR) */
+		regJump = mtctr.GetDestRegister<LLIL_SET_REG>();
+
+		//
+		// JUMP
+		//
+		tmp = il->GetInstruction(3);
+		if(tmp.operation != LLIL_JUMP)
+			return false;
+		tmp = tmp.GetDestExpr<LLIL_JUMP>();
+		if(tmp.operation != LLIL_REG)
+			return false;
+		if(tmp.GetSourceRegister<LLIL_REG>() != regJump)
+			return false;
+
+		return true;
 	}
 
 	bool RecognizeMachoPLTEntries(BinaryView* data, Function* func, LowLevelILFunction* il)
