@@ -128,7 +128,7 @@ class PowerpcArchitecture: public Architecture
 						result.AddBranch(UnresolvedBranch);
 					}
 				}
-				
+
 				break;
 			case PPC_INS_BL:
 				result.AddBranch(CallDestination, oper0->imm);
@@ -139,6 +139,7 @@ class PowerpcArchitecture: public Architecture
 
 				break;
 			case PPC_INS_BCTR:
+			case PPC_INS_TRAP:
 				result.AddBranch(UnresolvedBranch);
 				break;
 		}

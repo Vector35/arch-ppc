@@ -741,6 +741,11 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			il.AddInstruction(il.SystemCall());
 			break;
 
+
+		case PPC_INS_TRAP:
+			il.AddInstruction(il.Trap(0));
+			break;
+
 		case PPC_INS_BCL:
 		case PPC_INS_BCLR:
 		case PPC_INS_BCLRL:
@@ -1174,7 +1179,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_TLBSX:
 		case PPC_INS_TLBSYNC:
 		case PPC_INS_TLBWE:
-		case PPC_INS_TRAP:
 		case PPC_INS_TW:
 		case PPC_INS_TWI:
 		case PPC_INS_VADDCUW:
