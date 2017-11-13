@@ -61,6 +61,11 @@ class PowerpcArchitecture: public Architecture
 		return 4;
 	}
 
+	virtual size_t GetInstructionAlignment() const override
+	{
+		return 4;
+	}
+
 	virtual size_t GetMaxInstructionLength() const override
 	{
 		return 4;
