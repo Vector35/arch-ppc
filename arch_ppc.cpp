@@ -577,7 +577,7 @@ class PowerpcArchitecture: public Architecture
 		flag conditions -> set of flags
 		LLFC is "low level flag condition"
 	*/
-	virtual vector<uint32_t> GetFlagsRequiredForFlagCondition(BNLowLevelILFlagCondition cond) override
+	virtual vector<uint32_t> GetFlagsRequiredForFlagCondition(BNLowLevelILFlagCondition cond, uint32_t) override
 	{
 		MYLOG("%s(%d)\n", __func__, cond);
 
