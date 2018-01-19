@@ -522,7 +522,7 @@ class PowerpcArchitecture: public Architecture
 		flag roles
 	*/
 
-	virtual BNFlagRole GetFlagRole(uint32_t flag) override
+	virtual BNFlagRole GetFlagRole(uint32_t flag, uint32_t semClass) override
 	{
 		MYLOG("%s(%d)\n", __func__, flag);
 
