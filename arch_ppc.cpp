@@ -182,7 +182,7 @@ class PowerpcArchitecture: public Architecture
 		}
 		
 		/* mnemonic */
-		result.push_back(InstructionTextToken(InstructionToken, insn->mnemonic));
+		result.emplace_back(InstructionToken, insn->mnemonic);
 		
 		/* padding between mnemonic and operands */
 		memset(buf, ' ', 8);
@@ -191,7 +191,7 @@ class PowerpcArchitecture: public Architecture
 			buf[8-strlenMnem] = '\0';
 		else
 			buf[1] = '\0';
-		result.push_back(InstructionTextToken(TextToken, buf));
+		result.emplace_back(TextToken, buf);
 
 		/* operands */
 		for(int i=0; i<ppc->op_count; ++i) {
@@ -200,7 +200,7 @@ class PowerpcArchitecture: public Architecture
 			switch(op->type) {
 				case PPC_OP_REG:
 					//MYLOG("pushing a register\n");
-					result.push_back(InstructionTextToken(RegisterToken, GetRegisterName(op->reg)));
+					result.emplace_back(RegisterToken, GetRegisterName(op->reg));
 					break;
 				case PPC_OP_IMM:
 					//MYLOG("pushing an integer\n");
@@ -220,32 +220,32 @@ class PowerpcArchitecture: public Architecture
 						case PPC_INS_BLA:
 						case PPC_INS_BLR:
 						case PPC_INS_BLRL:
-							result.push_back(InstructionTextToken(PossibleAddressToken, buf, op->imm, 4));
+							result.emplace_back(PossibleAddressToken, buf, op->imm, 4);
 							break;
 						default:
-							result.push_back(InstructionTextToken(IntegerToken, buf, op->imm, 4));
+							result.emplace_back(IntegerToken, buf, op->imm, 4);
 					}
 
 					break;
 				case PPC_OP_MEM:
 					// eg: lwz r11, 8(r11)
 					sprintf(buf, "%d", op->mem.disp);
-					result.push_back(InstructionTextToken(IntegerToken, buf, op->mem.disp, 4));
+					result.emplace_back(IntegerToken, buf, op->mem.disp, 4);
 
-					result.push_back(InstructionTextToken(TextToken, "("));
-					result.push_back(InstructionTextToken(RegisterToken, GetRegisterName(op->mem.base)));
-					result.push_back(InstructionTextToken(TextToken, ")"));
+					result.emplace_back(TextToken, "(");
+					result.emplace_back(RegisterToken, GetRegisterName(op->mem.base));
+					result.emplace_back(TextToken, ")");
 					break;
 				case PPC_OP_CRX:
 				case PPC_OP_INVALID:
 				default:
 					//MYLOG("pushing a ???\n");
-					result.push_back(InstructionTextToken(TextToken, "???"));
+					result.emplace_back(TextToken, "???");
 			}
 	
 			if(i < ppc->op_count-1) {
 				//MYLOG("pushing a comma\n");
-				result.push_back(InstructionTextToken(OperandSeparatorToken, ", "));
+				result.emplace_back(OperandSeparatorToken, ", ");
 			}		
 		}
 		
