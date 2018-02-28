@@ -5,9 +5,9 @@
 using namespace std;
 
 #include <binaryninjaapi.h>
-//#define MYLOG(...) while(0);
+#define MYLOG(...) while(0);
 //#define MYLOG BinaryNinja::LogDebug
-#define MYLOG printf
+//#define MYLOG printf
 
 #include "lowlevelilinstruction.h"
 using namespace BinaryNinja; // for ::LogDebug, etc.
