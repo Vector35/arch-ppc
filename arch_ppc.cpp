@@ -886,11 +886,30 @@ class PowerpcArchitecture: public Architecture
 
 	bool Assemble(const string& code, uint64_t addr, DataBuffer& result, string& errors) override
 	{
-		(void)code;
-		(void)addr;
-		(void)result;
-		(void)errors;
 		MYLOG("%s()\n", __func__);
+		(void)addr;
+	
+		char *instrBytes=NULL, *err=NULL;
+		int instrBytesLen=0, errLen=0;
+	
+		int assembleResult;
+	
+		BNLlvmServicesInit();
+	
+		errors.clear();
+		assembleResult = BNLlvmServicesAssemble(code.c_str(), LLVM_SVCS_DIALECT_UNSPEC,
+		  "powerpc-none-none", LLVM_SVCS_CM_DEFAULT, LLVM_SVCS_RM_STATIC, 
+		  &instrBytes, &instrBytesLen, &err, &errLen);
+	
+		if(assembleResult || errLen) {
+			errors = err;
+			BNLlvmServicesAssembleFree(instrBytes, err);
+			return false;
+		}
+	
+		result.Clear();
+		result.Append(instrBytes, instrBytesLen);
+		BNLlvmServicesAssembleFree(instrBytes, err);
 		return true;
 	}
 
@@ -945,10 +964,17 @@ class PowerpcArchitecture: public Architecture
 
 	virtual bool ConvertToNop(uint8_t* data, uint64_t, size_t len) override
 	{
-		(void)data;
-		(void)len;
 		MYLOG("%s()\n", __func__);
-		return false;
+		uint32_t nop;
+		if(endian == LittleEndian)
+			nop = 0x60000000;
+		else
+			nop = 0x00000060;
+		if(len < 4)
+			return false;
+		for(size_t i=0; i<len/4; ++i)
+			((uint32_t *)data)[i] = nop;
+		return true;
 	}
 
 	virtual bool AlwaysBranch(uint8_t* data, uint64_t addr, size_t len) override
