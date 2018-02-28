@@ -5,8 +5,9 @@
 using namespace std;
 
 #include <binaryninjaapi.h>
-#define MYLOG(...) while(0);
+//#define MYLOG(...) while(0);
 //#define MYLOG BinaryNinja::LogDebug
+#define MYLOG printf
 
 #include "lowlevelilinstruction.h"
 using namespace BinaryNinja; // for ::LogDebug, etc.
@@ -281,6 +282,13 @@ class PowerpcArchitecture: public Architecture
 	virtual size_t GetFlagWriteLowLevelIL(BNLowLevelILOperation op, size_t size, uint32_t flagWriteType,
 		uint32_t flag, BNRegisterOrConstant* operands, size_t operandCount, LowLevelILFunction& il) override
 	{
+		(void)op;
+		(void)size;
+		(void)flagWriteType;
+		(void)flag;
+		(void)operands;
+		(void)operandCount;
+		(void)il;
 		MYLOG("%s()\n", __func__);
 
 		return il.Unimplemented();
@@ -524,6 +532,8 @@ class PowerpcArchitecture: public Architecture
 
 	virtual BNFlagRole GetFlagRole(uint32_t flag, uint32_t semClass) override
 	{
+		(void)semClass;
+
 		MYLOG("%s(%d)\n", __func__, flag);
 
 		switch (flag)
@@ -929,7 +939,39 @@ class PowerpcArchitecture: public Architecture
 		(void)data;
 		(void)addr;
 		(void)len;
+
 		MYLOG("%s()\n", __func__);
+
+		if(len < 4) {
+			MYLOG("data too small");
+			return false;
+		}
+
+		uint32_t iw = *(uint32_t *)data;
+		if(endian == BigEndian)
+			iw = bswap32(iw);
+
+		MYLOG("analyzing instruction word: 0x%08X\n", iw);
+
+		if((iw & 0xfc000000) == 0x40000000) { /* BXX B-form */
+			MYLOG("BXX I-form\n");
+			return true;
+		}
+
+		if((iw & 0xfc0007fe) == 0x4c000020) { /* BXX to LR, XL-form */
+			MYLOG("BXX to LR, XL-form\n");
+
+			if((iw & 0x03E00000) != 0x02800000) /* is already unconditional? */
+				return true;
+		}
+
+		if((iw & 0xfc0007fe) == 0x4c000420) { /* BXX to count reg, XL-form */
+			MYLOG("BXX to count reg, XL-form\n");
+
+			if((iw & 0x03E00000) != 0x02800000) /* is already unconditional? */
+				return true;
+		}
+
 		return false;
 	}
 
@@ -962,8 +1004,18 @@ class PowerpcArchitecture: public Architecture
 
 	/*************************************************************************/
 
+	uint32_t bswap32(uint32_t x)
+	{
+		return ((x&0xFF)<<24) |
+			((x&0xFF00)<<8) |
+			((x&0xFF0000)>>8) |
+			((x&0xFF000000)>>24);
+	}
+
 	virtual bool ConvertToNop(uint8_t* data, uint64_t, size_t len) override
 	{
+		(void)len;
+
 		MYLOG("%s()\n", __func__);
 		uint32_t nop;
 		if(endian == LittleEndian)
@@ -979,11 +1031,45 @@ class PowerpcArchitecture: public Architecture
 
 	virtual bool AlwaysBranch(uint8_t* data, uint64_t addr, size_t len) override
 	{
-		(void)data;
-		(void)addr;
-		(void)len;
 		MYLOG("%s()\n", __func__);
-		return false;
+
+		(void)len;
+		(void)addr;
+
+		uint32_t iwAfter = 0;
+		uint32_t iwBefore = *(uint32_t *)data;
+		if(endian == BigEndian)
+			iwBefore = bswap32(iwBefore);
+
+		if((iwBefore & 0xfc000000) == 0x40000000) { /* BXX B-form */
+			MYLOG("BXX I-form\n");
+
+			uint32_t li_aa_lk = iwBefore & 0xffff; /* grab BD,AA,LK */
+			if(li_aa_lk & 0x8000) /* sign extend? */
+				li_aa_lk |= 0x03FF0000;
+
+			iwAfter = 0x48000000 | li_aa_lk;
+		}
+		else
+		if((iwBefore & 0xfc0007fe) == 0x4c000020) { /* BXX to LR, XL-form */
+			MYLOG("BXX to LR, XL-form\n");
+
+			iwAfter = (iwBefore & 0xFC1FFFFF) | 0x02800000; /* set BO = 10100 */
+		}
+		else
+		if((iwBefore & 0xfc0007fe) == 0x4c000420) { /* BXX to count reg, XL-form */
+			MYLOG("BXX to count reg, XL-form\n");
+
+			iwAfter = (iwBefore & 0xFC1FFFFF) | 0x02800000; /* set BO = 10100 */
+		}
+		else {
+			return false;
+		}
+		
+		if(endian == BigEndian)
+			iwAfter = bswap32(iwAfter);
+		*(uint32_t *)data = iwAfter;
+		return true;	
 	}
 
 	virtual bool InvertBranch(uint8_t* data, uint64_t addr, size_t len) override
@@ -1126,6 +1212,10 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 
 	bool RecognizeMachoPLTEntries(BinaryView* data, Function* func, LowLevelILFunction* il)
 	{
+		(void)data;
+		(void)func;
+		(void)il;
+
 		MYLOG("%s()\n", __func__);
 
 		return false;
