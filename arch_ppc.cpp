@@ -954,7 +954,7 @@ class PowerpcArchitecture: public Architecture
 		MYLOG("analyzing instruction word: 0x%08X\n", iw);
 
 		if((iw & 0xfc000000) == 0x40000000) { /* BXX B-form */
-			MYLOG("BXX I-form\n");
+			MYLOG("BXX B-form\n");
 			return true;
 		}
 
@@ -994,7 +994,7 @@ class PowerpcArchitecture: public Architecture
 		MYLOG("analyzing instruction word: 0x%08X\n", iw);
 
 		if((iw & 0xfc000000) == 0x40000000) {
-			MYLOG("BXX I-form\n");
+			MYLOG("BXX B-form\n");
 		} else if((iw & 0xfc0007fe) == 0x4c000020) {
 			MYLOG("BXX to LR, XL-form\n");
 		} else if((iw & 0xfc0007fe) == 0x4c000420) {
@@ -1020,6 +1020,27 @@ class PowerpcArchitecture: public Architecture
 		(void)addr;
 		(void)len;
 		MYLOG("%s()\n", __func__);
+
+		uint32_t iw = *(uint32_t *)data;
+		if(endian == BigEndian)
+			iw = bswap32(iw);
+
+		MYLOG("analyzing instruction word: 0x%08X\n", iw);
+
+		if((iw & 0xfc000001) == 0x48000001) {
+			MYLOG("B I-form with LK==1\n");
+			return true;
+		} else if((iw & 0xfc000001) == 0x40000001) {
+			MYLOG("BXX B-form with LK==1\n");
+			return true;
+		} else if((iw & 0xfc0007fe) == 0x4c000020) {
+			MYLOG("BXX to LR, XL-form\n");
+			return true;
+		} else if((iw & 0xfc0007ff) == 0x4c000421) {
+			MYLOG("BXX to count reg, XL-form with LK==1\n");
+			return true;
+		}
+
 		return false;
 	}
 
@@ -1029,7 +1050,7 @@ class PowerpcArchitecture: public Architecture
 		(void)addr;
 		(void)len;
 		MYLOG("%s()\n", __func__);
-		return false;
+		return IsSkipAndReturnZeroPatchAvailable(data, addr, len);
 	}
 
 	/*************************************************************************/
@@ -1072,7 +1093,7 @@ class PowerpcArchitecture: public Architecture
 			iwBefore = bswap32(iwBefore);
 
 		if((iwBefore & 0xfc000000) == 0x40000000) { /* BXX B-form */
-			MYLOG("BXX I-form\n");
+			MYLOG("BXX B-form\n");
 
 			uint32_t li_aa_lk = iwBefore & 0xffff; /* grab BD,AA,LK */
 			if(li_aa_lk & 0x8000) /* sign extend? */
@@ -1121,7 +1142,7 @@ class PowerpcArchitecture: public Architecture
 		MYLOG("analyzing instruction word: 0x%08X\n", iw);
 
 		if((iw & 0xfc000000) == 0x40000000) {
-			MYLOG("BXX I-form\n");
+			MYLOG("BXX B-form\n");
 		} else if((iw & 0xfc0007fe) == 0x4c000020) {
 			MYLOG("BXX to LR, XL-form\n");
 		} else if((iw & 0xfc0007fe) == 0x4c000420) {
@@ -1146,7 +1167,18 @@ class PowerpcArchitecture: public Architecture
 		(void)len;
 		(void)value;
 		MYLOG("%s()\n", __func__);
-		return false;
+
+		if(value > 0x4000)
+			return false;
+
+		/* li (load immediate) is pseudo-op for addi rD,rA,SIMM with rA=0 */
+		uint32_t iw = 0x38600000 | (value & 0xFFFF); // li (load immediate)
+
+		/* success */
+		if(endian == BigEndian)
+			iw = bswap32(iw);
+		*(uint32_t *)data = iw;
+		return true;	
 	}
 
 	/*************************************************************************/
