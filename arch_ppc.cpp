@@ -981,6 +981,36 @@ class PowerpcArchitecture: public Architecture
 		(void)addr;
 		(void)len;
 		MYLOG("%s()\n", __func__);
+
+		if(len < 4) {
+			MYLOG("data too small");
+			return false;
+		}
+
+		uint32_t iw = *(uint32_t *)data;
+		if(endian == BigEndian)
+			iw = bswap32(iw);
+
+		MYLOG("analyzing instruction word: 0x%08X\n", iw);
+
+		if((iw & 0xfc000000) == 0x40000000) {
+			MYLOG("BXX I-form\n");
+		} else if((iw & 0xfc0007fe) == 0x4c000020) {
+			MYLOG("BXX to LR, XL-form\n");
+		} else if((iw & 0xfc0007fe) == 0x4c000420) {
+			MYLOG("BXX to count reg, XL-form\n");
+		} else {
+			return false;
+		}
+
+		/* BO and BI exist in all 3 of the above forms */
+		uint32_t bo = (iw >> 21) & 0x1F;
+		if((bo & 0x1E) == 0) return true; // (--ctr)!=0 && cr_bi==0
+		if((bo & 0x1E) == 2) return true; // (--ctr)==0 && cr_bi==0
+		if((bo & 0x1C) == 4) return true; // cr_bi==0
+		if((bo & 0x1E) == 8) return true; // (--ctr)!=0 && cr_bi==1
+		if((bo & 0x1E) == 10) return true; // (--ctr)==0 && cr_bi==1
+		if((bo & 0x1C) == 12) return true; // cr_bi==1
 		return false;
 	}
 
@@ -1078,7 +1108,35 @@ class PowerpcArchitecture: public Architecture
 		(void)addr;
 		(void)len;
 		MYLOG("%s()\n", __func__);
-		return false;
+
+		if(len < 4) {
+			MYLOG("data too small");
+			return false;
+		}
+
+		uint32_t iw = *(uint32_t *)data;
+		if(endian == BigEndian)
+			iw = bswap32(iw);
+
+		MYLOG("analyzing instruction word: 0x%08X\n", iw);
+
+		if((iw & 0xfc000000) == 0x40000000) {
+			MYLOG("BXX I-form\n");
+		} else if((iw & 0xfc0007fe) == 0x4c000020) {
+			MYLOG("BXX to LR, XL-form\n");
+		} else if((iw & 0xfc0007fe) == 0x4c000420) {
+			MYLOG("BXX to count reg, XL-form\n");
+		} else {
+			return false;
+		}
+
+		iw ^= 0x1000000;
+
+		/* success */
+		if(endian == BigEndian)
+			iw = bswap32(iw);
+		*(uint32_t *)data = iw;
+		return true;	
 	}
 
 	virtual bool SkipAndReturnValue(uint8_t* data, uint64_t addr, size_t len, uint64_t value) override
