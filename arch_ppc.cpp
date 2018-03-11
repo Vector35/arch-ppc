@@ -282,17 +282,96 @@ class PowerpcArchitecture: public Architecture
 	virtual size_t GetFlagWriteLowLevelIL(BNLowLevelILOperation op, size_t size, uint32_t flagWriteType,
 		uint32_t flag, BNRegisterOrConstant* operands, size_t operandCount, LowLevelILFunction& il) override
 	{
-		(void)op;
-		(void)size;
-		(void)flagWriteType;
-		(void)flag;
-		(void)operands;
-		(void)operandCount;
-		(void)il;
 		MYLOG("%s()\n", __func__);
 
-		return il.Unimplemented();
+		bool signedWrite = true;
+		ExprId left, right;
+
+		switch (flagWriteType)
+		{
+			case IL_FLAGWRITE_CR0_U:
+			case IL_FLAGWRITE_CR1_U:
+			case IL_FLAGWRITE_CR2_U:
+			case IL_FLAGWRITE_CR3_U:
+			case IL_FLAGWRITE_CR4_U:
+			case IL_FLAGWRITE_CR5_U:
+			case IL_FLAGWRITE_CR6_U:
+			case IL_FLAGWRITE_CR7_U:
+				signedWrite = false;
+		}
+
+		auto liftOps = [&]() {
+				if (op == LLIL_SUB)
+				{
+					left = il.GetExprForRegisterOrConstant(operands[0], size);
+					right = il.GetExprForRegisterOrConstant(operands[1], size);
+				}
+				else
+				{
+					if (op == LLIL_SET_REG)
+						left = il.GetExprForRegisterOrConstant(operands[1], size);
+					else
+						left = il.GetExprForRegisterOrConstantOperation(op, size, operands, operandCount);
+
+					right = il.Const(size, 0);
+				}
+		};
+
+		switch (flag)
+		{
+			case IL_FLAG_LT:
+			case IL_FLAG_LT_1:
+			case IL_FLAG_LT_2:
+			case IL_FLAG_LT_3:
+			case IL_FLAG_LT_4:
+			case IL_FLAG_LT_5:
+			case IL_FLAG_LT_6:
+			case IL_FLAG_LT_7:
+				liftOps();
+
+				if (signedWrite)
+					return il.CompareSignedLessThan(size, left, right);
+				else
+					return il.CompareUnsignedLessThan(size, left, right);
+
+			case IL_FLAG_GT:
+			case IL_FLAG_GT_1:
+			case IL_FLAG_GT_2:
+			case IL_FLAG_GT_3:
+			case IL_FLAG_GT_4:
+			case IL_FLAG_GT_5:
+			case IL_FLAG_GT_6:
+			case IL_FLAG_GT_7:
+				liftOps();
+
+				if (signedWrite)
+					return il.CompareSignedGreaterThan(size, left, right);
+				else
+					return il.CompareUnsignedGreaterThan(size, left, right);
+
+			case IL_FLAG_EQ:
+			case IL_FLAG_EQ_1:
+			case IL_FLAG_EQ_2:
+			case IL_FLAG_EQ_3:
+			case IL_FLAG_EQ_4:
+			case IL_FLAG_EQ_5:
+			case IL_FLAG_EQ_6:
+			case IL_FLAG_EQ_7:
+				liftOps();
+				return il.CompareEqual(size, left, right);
+		}
+
+		BNFlagRole role = GetFlagRole(flag, GetSemanticClassForFlagWriteType(flagWriteType));
+		return GetDefaultFlagWriteLowLevelIL(op, size, role, operands, operandCount, il);
 	}
+
+
+	/*
+	virtual ExprId GetSemanticFlagGroupLowLevelIL(uint32_t semGroup, LowLevelILFunction& il) override
+	{
+		return il.Flag(semGroup);
+	}
+	*/
 
 	virtual string GetRegisterName(uint32_t regId) override
 	{
@@ -322,9 +401,6 @@ class PowerpcArchitecture: public Architecture
 		MYLOG("%s()\n", __func__);
 		return vector<uint32_t> {
 			IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
-			IL_FLAG_UN,
-
-			/*
 			IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1,
 			IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
 			IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
@@ -332,7 +408,6 @@ class PowerpcArchitecture: public Architecture
 			IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
 			IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
 			IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
-			*/
 			IL_FLAG_XER_SO, IL_FLAG_XER_OV, IL_FLAG_XER_CA
 		};
 	}
@@ -342,45 +417,41 @@ class PowerpcArchitecture: public Architecture
 		MYLOG("%s(%d)\n", __func__, flag);
 
 		switch(flag) {
-			case IL_FLAG_LT: return "LT";
-			case IL_FLAG_GT: return "GT";
-			case IL_FLAG_EQ: return "EQ";
-			case IL_FLAG_SO: return "SO";
-
-			/*
-			case IL_FLAG_LT_1: return "LT_1";
-			case IL_FLAG_GT_1: return "GT_1";
-			case IL_FLAG_EQ_1: return "EQ_1";
-			case IL_FLAG_SO_1: return "SO_1";
-			case IL_FLAG_LT_2: return "LT_2";
-			case IL_FLAG_GT_2: return "GT_2";
-			case IL_FLAG_EQ_2: return "EQ_2";
-			case IL_FLAG_SO_2: return "SO_2";
-			case IL_FLAG_LT_3: return "LT_3";
-			case IL_FLAG_GT_3: return "GT_3";
-			case IL_FLAG_EQ_3: return "EQ_3";
-			case IL_FLAG_SO_3: return "SO_3";
-			case IL_FLAG_LT_4: return "LT_4";
-			case IL_FLAG_GT_4: return "GT_4";
-			case IL_FLAG_EQ_4: return "EQ_4";
-			case IL_FLAG_SO_4: return "SO_4";
-			case IL_FLAG_LT_5: return "LT_5";
-			case IL_FLAG_GT_5: return "GT_5";
-			case IL_FLAG_EQ_5: return "EQ_5";
-			case IL_FLAG_SO_5: return "SO_5";
-			case IL_FLAG_LT_6: return "LT_6";
-			case IL_FLAG_GT_6: return "GT_6";
-			case IL_FLAG_EQ_6: return "EQ_6";
-			case IL_FLAG_SO_6: return "SO_6";
-			case IL_FLAG_LT_7: return "LT_7";
-			case IL_FLAG_GT_7: return "GT_7";
-			case IL_FLAG_EQ_7: return "EQ_7";
-			case IL_FLAG_SO_7: return "SO_7";
-			*/
-
-			case IL_FLAG_XER_SO: return "XER_SO";
-			case IL_FLAG_XER_OV: return "XER_OV";
-			case IL_FLAG_XER_CA: return "XER_CA";
+			case IL_FLAG_LT: return "lt";
+			case IL_FLAG_GT: return "gt";
+			case IL_FLAG_EQ: return "eq";
+			case IL_FLAG_SO: return "so";
+			case IL_FLAG_LT_1: return "cr1_lt";
+			case IL_FLAG_GT_1: return "cr1_gt";
+			case IL_FLAG_EQ_1: return "cr1_eq";
+			case IL_FLAG_SO_1: return "cr1_so";
+			case IL_FLAG_LT_2: return "cr2_lt";
+			case IL_FLAG_GT_2: return "cr2_gt";
+			case IL_FLAG_EQ_2: return "cr2_eq";
+			case IL_FLAG_SO_2: return "cr2_so";
+			case IL_FLAG_LT_3: return "cr3_lt";
+			case IL_FLAG_GT_3: return "cr3_gt";
+			case IL_FLAG_EQ_3: return "cr3_eq";
+			case IL_FLAG_SO_3: return "cr3_so";
+			case IL_FLAG_LT_4: return "cr4_lt";
+			case IL_FLAG_GT_4: return "cr4_gt";
+			case IL_FLAG_EQ_4: return "cr4_eq";
+			case IL_FLAG_SO_4: return "cr4_so";
+			case IL_FLAG_LT_5: return "cr5_lt";
+			case IL_FLAG_GT_5: return "cr5_gt";
+			case IL_FLAG_EQ_5: return "cr5_eq";
+			case IL_FLAG_SO_5: return "cr5_so";
+			case IL_FLAG_LT_6: return "cr6_lt";
+			case IL_FLAG_GT_6: return "cr6_gt";
+			case IL_FLAG_EQ_6: return "cr6_eq";
+			case IL_FLAG_SO_6: return "cr6_so";
+			case IL_FLAG_LT_7: return "cr7_lt";
+			case IL_FLAG_GT_7: return "cr7_gt";
+			case IL_FLAG_EQ_7: return "cr7_eq";
+			case IL_FLAG_SO_7: return "cr7_so";
+			case IL_FLAG_XER_SO: return "xer_so";
+			case IL_FLAG_XER_OV: return "xer_ov";
+			case IL_FLAG_XER_CA: return "xer_ca";
 			default: return "ERR_FLAG_NAME";
 		}
 	}
@@ -391,12 +462,15 @@ class PowerpcArchitecture: public Architecture
 	virtual vector<uint32_t> GetAllFlagWriteTypes() override
 	{
 		return vector<uint32_t> {
-			IL_FLAGWRITE_NONE, IL_FLAGWRITE_ALL, IL_FLAGWRITE_SET3, IL_FLAGWRITE_SET4
+			IL_FLAGWRITE_NONE, 
 
-			/*
-			IL_FLAGWRITE_CR0, IL_FLAGWRITE_CR1, IL_FLAGWRITE_CR2, IL_FLAGWRITE_CR3,
-			IL_FLAGWRITE_CR4, IL_FLAGWRITE_CR5, IL_FLAGWRITE_CR6, IL_FLAGWRITE_CR7
-			*/
+			IL_FLAGWRITE_CR0_S, IL_FLAGWRITE_CR1_S, IL_FLAGWRITE_CR2_S, IL_FLAGWRITE_CR3_S,
+			IL_FLAGWRITE_CR4_S, IL_FLAGWRITE_CR5_S, IL_FLAGWRITE_CR6_S, IL_FLAGWRITE_CR7_S,
+
+			IL_FLAGWRITE_CR0_U, IL_FLAGWRITE_CR1_U, IL_FLAGWRITE_CR2_U, IL_FLAGWRITE_CR3_U,
+			IL_FLAGWRITE_CR4_U, IL_FLAGWRITE_CR5_U, IL_FLAGWRITE_CR6_U, IL_FLAGWRITE_CR7_U,
+
+			IL_FLAGWRITE_XER, IL_FLAGWRITE_XER_CA, IL_FLAGWRITE_XER_OV_SO
 		};
 	}
 
@@ -406,35 +480,47 @@ class PowerpcArchitecture: public Architecture
 
 		switch (writeType)
 		{
-			case IL_FLAGWRITE_NONE:
-				return "none";
-			case IL_FLAGWRITE_ALL:
-				return "*";
-			case IL_FLAGWRITE_SET3:
-				return "SET3";
-			case IL_FLAGWRITE_SET4:
-				return "SET4";
+			case IL_FLAGWRITE_CR0_S:
+				return "cr0_signed";
+			case IL_FLAGWRITE_CR1_S:
+				return "cr1_signed";
+			case IL_FLAGWRITE_CR2_S:
+				return "cr2_signed";
+			case IL_FLAGWRITE_CR3_S:
+				return "cr3_signed";
+			case IL_FLAGWRITE_CR4_S:
+				return "cr4_signed";
+			case IL_FLAGWRITE_CR5_S:
+				return "cr5_signed";
+			case IL_FLAGWRITE_CR6_S:
+				return "cr6_signed";
+			case IL_FLAGWRITE_CR7_S:
+				return "cr7_signed";
 
-			/*
-			case IL_FLAGWRITE_CR0:
-				return "cr0";
-			case IL_FLAGWRITE_CR1:
-				return "cr1";
-			case IL_FLAGWRITE_CR2:
-				return "cr2";
-			case IL_FLAGWRITE_CR3:
-				return "cr3";
-			case IL_FLAGWRITE_CR4:
-				return "cr4";
-			case IL_FLAGWRITE_CR5:
-				return "cr5";
-			case IL_FLAGWRITE_CR6:
-				return "cr6";
-			case IL_FLAGWRITE_CR7:
-				return "cr7";
+			case IL_FLAGWRITE_CR0_U:
+				return "cr0_unsigned";
+			case IL_FLAGWRITE_CR1_U:
+				return "cr1_unsigned";
+			case IL_FLAGWRITE_CR2_U:
+				return "cr2_unsigned";
+			case IL_FLAGWRITE_CR3_U:
+				return "cr3_unsigned";
+			case IL_FLAGWRITE_CR4_U:
+				return "cr4_unsigned";
+			case IL_FLAGWRITE_CR5_U:
+				return "cr5_unsigned";
+			case IL_FLAGWRITE_CR6_U:
+				return "cr6_unsigned";
+			case IL_FLAGWRITE_CR7_U:
+				return "cr7_unsigned";
+
 			case IL_FLAGWRITE_XER:
 				return "xer";
-			*/
+			case IL_FLAGWRITE_XER_CA:
+				return "xer_ca";
+			case IL_FLAGWRITE_XER_OV_SO:
+				return "xer_ov_so";
+
 			default:
 				MYLOG("ERROR: unrecognized writeType\n");
 				return "none";
@@ -447,70 +533,50 @@ class PowerpcArchitecture: public Architecture
 
 		switch (writeType)
 		{
-			case IL_FLAGWRITE_ALL:
-				return vector<uint32_t> {
-					IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
-					/*
-					IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1,
-					IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
-					IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
-					IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4,
-					IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
-					IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
-					IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
-					*/
-					IL_FLAG_XER_SO, IL_FLAG_XER_OV, IL_FLAG_XER_CA
-				};
-
-			/* arithmetics without overflow (eg: cmp) */
-			case IL_FLAGWRITE_SET3:
-				return vector<uint32_t> {
-					IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ
-				};
-
-			/* most arithmetics... */
-			case IL_FLAGWRITE_SET4:
-				return vector<uint32_t> {
-					IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO
-				};
-
-			/*
-			case IL_FLAGWRITE_CR0:
+			case IL_FLAGWRITE_CR0_S:
+			case IL_FLAGWRITE_CR0_U:
 				return vector<uint32_t> {
 					IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
 				};
 
-			case IL_FLAGWRITE_CR1:
+			case IL_FLAGWRITE_CR1_S:
+			case IL_FLAGWRITE_CR1_U:
 				return vector<uint32_t> {
 					IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1,
 				};
 
-			case IL_FLAGWRITE_CR2:
+			case IL_FLAGWRITE_CR2_S:
+			case IL_FLAGWRITE_CR2_U:
 				return vector<uint32_t> {
 					IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
 				};
 
-			case IL_FLAGWRITE_CR3:
+			case IL_FLAGWRITE_CR3_S:
+			case IL_FLAGWRITE_CR3_U:
 				return vector<uint32_t> {
 					IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
 				};
 
-			case IL_FLAGWRITE_CR4:
+			case IL_FLAGWRITE_CR4_S:
+			case IL_FLAGWRITE_CR4_U:
 				return vector<uint32_t> {
 					IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4,
 				};
 
-			case IL_FLAGWRITE_CR5:
+			case IL_FLAGWRITE_CR5_S:
+			case IL_FLAGWRITE_CR5_U:
 				return vector<uint32_t> {
 					IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
 				};
 
-			case IL_FLAGWRITE_CR6:
+			case IL_FLAGWRITE_CR6_S:
+			case IL_FLAGWRITE_CR6_U:
 				return vector<uint32_t> {
 					IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
 				};	
 			
-			case IL_FLAGWRITE_CR7:
+			case IL_FLAGWRITE_CR7_S:
+			case IL_FLAGWRITE_CR7_U:
 				return vector<uint32_t> {
 					IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
 				};
@@ -519,12 +585,98 @@ class PowerpcArchitecture: public Architecture
 				return vector<uint32_t> {
 					IL_FLAG_XER_SO, IL_FLAG_XER_OV, IL_FLAG_XER_CA
 				};
-			*/
+
+			case IL_FLAGWRITE_XER_CA:
+				return vector<uint32_t> {
+					IL_FLAG_XER_CA
+				};
+
+			case IL_FLAGWRITE_XER_OV_SO:
+				return vector<uint32_t> {
+					IL_FLAG_XER_SO, IL_FLAG_XER_OV
+				};
 
 			default:
 				return vector<uint32_t>();
 		}
 	}
+	virtual uint32_t GetSemanticClassForFlagWriteType(uint32_t writeType) override
+	{
+		switch (writeType)
+		{
+			case IL_FLAGWRITE_CR0_S: return IL_FLAGCLASS_CR0_S;
+			case IL_FLAGWRITE_CR0_U: return IL_FLAGCLASS_CR0_U;
+			case IL_FLAGWRITE_CR1_S: return IL_FLAGCLASS_CR1_S;
+			case IL_FLAGWRITE_CR1_U: return IL_FLAGCLASS_CR1_U;
+			case IL_FLAGWRITE_CR2_S: return IL_FLAGCLASS_CR2_S;
+			case IL_FLAGWRITE_CR2_U: return IL_FLAGCLASS_CR2_U;
+			case IL_FLAGWRITE_CR3_S: return IL_FLAGCLASS_CR3_S;
+			case IL_FLAGWRITE_CR3_U: return IL_FLAGCLASS_CR3_U;
+			case IL_FLAGWRITE_CR4_S: return IL_FLAGCLASS_CR4_S;
+			case IL_FLAGWRITE_CR4_U: return IL_FLAGCLASS_CR4_U;
+			case IL_FLAGWRITE_CR5_S: return IL_FLAGCLASS_CR5_S;
+			case IL_FLAGWRITE_CR5_U: return IL_FLAGCLASS_CR5_U;
+			case IL_FLAGWRITE_CR6_S: return IL_FLAGCLASS_CR6_S;
+			case IL_FLAGWRITE_CR6_U: return IL_FLAGCLASS_CR6_U;
+			case IL_FLAGWRITE_CR7_S: return IL_FLAGCLASS_CR7_S;
+			case IL_FLAGWRITE_CR7_U: return IL_FLAGCLASS_CR7_U;
+		}
+
+		return IL_FLAGCLASS_NONE;
+	}
+
+	/*
+		flag classes
+	*/
+	virtual vector<uint32_t> GetAllSemanticFlagClasses() override
+	{
+		return vector<uint32_t> {
+			IL_FLAGCLASS_NONE, 
+
+			IL_FLAGCLASS_CR0_S, IL_FLAGCLASS_CR1_S, IL_FLAGCLASS_CR2_S, IL_FLAGCLASS_CR3_S,
+			IL_FLAGCLASS_CR4_S, IL_FLAGCLASS_CR5_S, IL_FLAGCLASS_CR6_S, IL_FLAGCLASS_CR7_S,
+
+			IL_FLAGCLASS_CR0_U, IL_FLAGCLASS_CR1_U, IL_FLAGCLASS_CR2_U, IL_FLAGCLASS_CR3_U,
+			IL_FLAGCLASS_CR4_U, IL_FLAGCLASS_CR5_U, IL_FLAGCLASS_CR6_U, IL_FLAGCLASS_CR7_U,
+		};
+	}
+
+	virtual std::string GetSemanticFlagClassName(uint32_t semClass) override
+	{
+		return GetFlagWriteTypeName(semClass);
+	}
+
+	/*
+	   semantic flag groups
+	 */
+	/*
+	virtual vector<uint32_t> GetAllSemanticFlagGroups() override
+	{
+		return vector<uint32_t> {
+			IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
+			IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
+			IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
+			IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4,
+			IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
+			IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
+			IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
+		};
+	}
+
+	virtual std::string GetSemanticFlagGroupName(uint32_t semGroup) override
+	{
+		// flag group ids kept identical to flag ids
+		return GetFlagName(semGroup);
+	}
+
+	virtual std::vector<uint32_t> GetFlagsRequiredForSemanticFlagGroup(uint32_t semGroup) override
+	{
+		// flag group ids kept identical to flag ids
+		return { semGroup };
+	}
+	/*
+
+	//virtual std::map<uint32_t, BNLowLevelILFlagCondition> GetFlagConditionsForSemanticFlagGroup(uint32_t semGroup);
 
 	/*
 		flag roles
@@ -532,38 +684,51 @@ class PowerpcArchitecture: public Architecture
 
 	virtual BNFlagRole GetFlagRole(uint32_t flag, uint32_t semClass) override
 	{
-		(void)semClass;
-
 		MYLOG("%s(%d)\n", __func__, flag);
+
+		bool signedClass = true;
+
+		switch (semClass)
+		{
+			case IL_FLAGCLASS_CR0_U:
+			case IL_FLAGCLASS_CR1_U:
+			case IL_FLAGCLASS_CR2_U:
+			case IL_FLAGCLASS_CR3_U:
+			case IL_FLAGCLASS_CR4_U:
+			case IL_FLAGCLASS_CR5_U:
+			case IL_FLAGCLASS_CR6_U:
+			case IL_FLAGCLASS_CR7_U:
+				signedClass = false;
+		}
 
 		switch (flag)
 		{
 			case IL_FLAG_LT:
-//			case IL_FLAG_LT_1:
-//			case IL_FLAG_LT_2:
-//			case IL_FLAG_LT_3:
-//			case IL_FLAG_LT_4:
-//			case IL_FLAG_LT_5:
-//			case IL_FLAG_LT_6:
-//			case IL_FLAG_LT_7:
-				return NegativeSignFlagRole;
+			case IL_FLAG_LT_1:
+			case IL_FLAG_LT_2:
+			case IL_FLAG_LT_3:
+			case IL_FLAG_LT_4:
+			case IL_FLAG_LT_5:
+			case IL_FLAG_LT_6:
+			case IL_FLAG_LT_7:
+				return signedClass ? NegativeSignFlagRole : SpecialFlagRole;
 			case IL_FLAG_GT:
-//			case IL_FLAG_GT_1:
-//			case IL_FLAG_GT_2:
-//			case IL_FLAG_GT_3:
-//			case IL_FLAG_GT_4:
-//			case IL_FLAG_GT_5:
-//			case IL_FLAG_GT_6:
-//			case IL_FLAG_GT_7:
-				return PositiveSignFlagRole;
+			case IL_FLAG_GT_1:
+			case IL_FLAG_GT_2:
+			case IL_FLAG_GT_3:
+			case IL_FLAG_GT_4:
+			case IL_FLAG_GT_5:
+			case IL_FLAG_GT_6:
+			case IL_FLAG_GT_7:
+				return SpecialFlagRole; // PositiveSignFlag is >=, not >
 			case IL_FLAG_EQ:
-//			case IL_FLAG_EQ_1:
-//			case IL_FLAG_EQ_2:
-//			case IL_FLAG_EQ_3:
-//			case IL_FLAG_EQ_4:
-//			case IL_FLAG_EQ_5:
-//			case IL_FLAG_EQ_6:
-//			case IL_FLAG_EQ_7:
+			case IL_FLAG_EQ_1:
+			case IL_FLAG_EQ_2:
+			case IL_FLAG_EQ_3:
+			case IL_FLAG_EQ_4:
+			case IL_FLAG_EQ_5:
+			case IL_FLAG_EQ_6:
+			case IL_FLAG_EQ_7:
 				return ZeroFlagRole;
 			// case IL_FLAG_SO:
 			// case IL_FLAG_SO_1:

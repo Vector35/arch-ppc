@@ -21,13 +21,10 @@ if a==b then c=0b001 (not setting SO, setting EQ)
 #define IL_FLAG_GT 1
 #define IL_FLAG_EQ 2
 #define IL_FLAG_SO 3
-#define IL_FLAG_UN 4
-/* in cr1... */
-//#define IL_FLAG_LT_1 4
-//#define IL_FLAG_GT_1 5
-//#define IL_FLAG_EQ_1 6
-//#define IL_FLAG_SO_1 7
-/* and so on... */
+#define IL_FLAG_LT_1 4
+#define IL_FLAG_GT_1 5
+#define IL_FLAG_EQ_1 6
+#define IL_FLAG_SO_1 7
 #define IL_FLAG_LT_2 8
 #define IL_FLAG_GT_2 9
 #define IL_FLAG_EQ_2 10
@@ -48,7 +45,6 @@ if a==b then c=0b001 (not setting SO, setting EQ)
 #define IL_FLAG_GT_6 25
 #define IL_FLAG_EQ_6 26
 #define IL_FLAG_SO_6 27
-/* to cr7 */
 #define IL_FLAG_LT_7 28
 #define IL_FLAG_GT_7 29
 #define IL_FLAG_EQ_7 30
@@ -61,19 +57,43 @@ if a==b then c=0b001 (not setting SO, setting EQ)
 
 /* the different types of influence an instruction can have over flags */
 #define IL_FLAGWRITE_NONE 0
-#define IL_FLAGWRITE_ALL 1
-#define IL_FLAGWRITE_SET3 3
-#define IL_FLAGWRITE_SET4 4
-#define IL_FLAGWRITE_CR0 10
-#define IL_FLAGWRITE_CR1 11
-#define IL_FLAGWRITE_CR2 12
-#define IL_FLAGWRITE_CR3 13
-#define IL_FLAGWRITE_CR4 14
-#define IL_FLAGWRITE_CR5 15
-#define IL_FLAGWRITE_CR6 16
-#define IL_FLAGWRITE_CR7 17
-#define IL_FLAGWRITE_XER 18
-#define IL_FLAGWRITE_NOCARRY 20
-#define IL_FLAGWRITE_CO 30
+#define IL_FLAGWRITE_CR0_S 1
+#define IL_FLAGWRITE_CR0_U 2
+#define IL_FLAGWRITE_CR1_S 3
+#define IL_FLAGWRITE_CR1_U 4
+#define IL_FLAGWRITE_CR2_S 5
+#define IL_FLAGWRITE_CR2_U 6
+#define IL_FLAGWRITE_CR3_S 7
+#define IL_FLAGWRITE_CR3_U 8
+#define IL_FLAGWRITE_CR4_S 9
+#define IL_FLAGWRITE_CR4_U 10
+#define IL_FLAGWRITE_CR5_S 11
+#define IL_FLAGWRITE_CR5_U 12
+#define IL_FLAGWRITE_CR6_S 13
+#define IL_FLAGWRITE_CR6_U 14
+#define IL_FLAGWRITE_CR7_S 15
+#define IL_FLAGWRITE_CR7_U 16
+#define IL_FLAGWRITE_XER 17
+#define IL_FLAGWRITE_XER_CA 18
+#define IL_FLAGWRITE_XER_OV_SO 19
+
+/* the different classes of writes to each cr */
+#define IL_FLAGCLASS_NONE 0
+#define IL_FLAGCLASS_CR0_S 1
+#define IL_FLAGCLASS_CR0_U 2
+#define IL_FLAGCLASS_CR1_S 3
+#define IL_FLAGCLASS_CR1_U 4
+#define IL_FLAGCLASS_CR2_S 5
+#define IL_FLAGCLASS_CR2_U 6
+#define IL_FLAGCLASS_CR3_S 7
+#define IL_FLAGCLASS_CR3_U 8
+#define IL_FLAGCLASS_CR4_S 9
+#define IL_FLAGCLASS_CR4_U 10
+#define IL_FLAGCLASS_CR5_S 11
+#define IL_FLAGCLASS_CR5_U 12
+#define IL_FLAGCLASS_CR6_S 13
+#define IL_FLAGCLASS_CR6_U 14
+#define IL_FLAGCLASS_CR7_S 15
+#define IL_FLAGCLASS_CR7_U 16
 
 bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction& il, const uint8_t *data, uint64_t addr, decomp_result *res);
