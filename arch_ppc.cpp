@@ -185,6 +185,9 @@ class PowerpcArchitecture: public Architecture
 
 		switch (insn->id)
 		{
+			case PPC_INS_CRAND:
+			case PPC_INS_CRANDC:
+			case PPC_INS_CRNAND:
 			case PPC_INS_CROR:
 			case PPC_INS_CRORC:
 			case PPC_INS_CRNOR:
