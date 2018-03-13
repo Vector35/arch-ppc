@@ -770,6 +770,47 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			il.AddInstruction(ei0);
 			break;
 
+		case PPC_INS_EXTSB:
+		case PPC_INS_EXTSH:
+			REQUIRE2OPS
+			ei0 = il.Register(4, oper1->reg);
+			if (insn->id == PPC_INS_EXTSB)
+				ei0 = il.LowPart(1, ei0);
+			else
+				ei0 = il.LowPart(2, ei0);
+			ei0 = il.SignExtend(4, ei0);
+			ei0 = il.SetRegister(4, oper0->reg, ei0,
+				ppc->update_cr0 ? IL_FLAGWRITE_CR0_S : 0
+			);
+			il.AddInstruction(ei0);
+			break;
+
+		case PPC_INS_ISEL:
+			REQUIRE4OPS
+			{
+				LowLevelILLabel trueLabel, falseLabel, doneLabel;
+				ei0 = il.Flag(oper3->reg - PPC_REG_R0);
+				ei1 = il.Register(4, oper1->reg);
+				ei2 = il.Register(4, oper2->reg);
+				il.AddInstruction(il.If(ei0, trueLabel, falseLabel));
+
+				/* true case */
+				il.MarkLabel(trueLabel);
+				ei0 = il.SetRegister(4, oper0->reg, ei1);
+				il.AddInstruction(ei0);
+				il.AddInstruction(il.Goto(doneLabel));
+
+				/* false case */
+				il.MarkLabel(falseLabel);
+				ei0 = il.SetRegister(4, oper0->reg, ei2);
+				il.AddInstruction(ei0);
+				il.AddInstruction(il.Goto(doneLabel));
+
+				/* done */
+				il.MarkLabel(doneLabel);
+			}
+			break;
+
 		case PPC_INS_LMW:
 			REQUIRE2OPS
 			for(i=oper0->reg; i<=PPC_REG_R31; ++i) {
@@ -943,6 +984,14 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 
 		case PPC_INS_NOP:
 			il.AddInstruction(il.Nop());
+			break;
+
+		case PPC_INS_NOT:
+			REQUIRE2OPS
+			ei0 = il.Not(4, operToIL(il, oper1));
+			il.AddInstruction(il.SetRegister(4, oper0->reg, ei0,
+				ppc->update_cr0 ? IL_FLAGWRITE_CR0_S : 0
+			));
 			break;
 
 		case PPC_INS_OR:
@@ -1246,7 +1295,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 				}
 				else if (mask != 0xffffffff)
 				{
-						ei0 = il.And(4, ei0, il.Const(4, mask));
+					ei0 = il.And(4, ei0, il.Const(4, mask));
 				}
 
 				ei0 = il.SetRegister(4, oper0->reg, ei0,
@@ -1288,6 +1337,40 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			);
 			il.AddInstruction(ei0);
 			break;
+
+		case PPC_INS_ROTLWI:
+			REQUIRE3OPS
+			ei0 = il.Register(4, oper1->reg);
+			ei0 = il.RotateLeft(4, ei0, il.Const(4, oper2->imm));
+			ei0 = il.SetRegister(4, oper0->reg, ei0,
+					ppc->update_cr0 ? IL_FLAGWRITE_CR0_S : 0
+			);
+			il.AddInstruction(ei0);
+			break;
+
+		case PPC_INS_ROTLW:
+		case PPC_INS_RLWNM:
+			REQUIRE3OPS
+			{
+				uint32_t mask = 0xffffffff;
+				if (insn->id == PPC_INS_RLWNM)
+				{
+					REQUIRE5OPS
+					mask = genMask(oper3->imm, oper4->imm);
+				}
+				ei0 = il.Register(4, oper1->reg);
+				ei1 = il.Register(4, oper2->reg);
+				ei1 = il.And(4, ei1, il.Const(4, 0x1f));
+				ei0 = il.RotateLeft(4, ei0, ei1);
+				if (mask != 0xffffffff)
+					ei0 = il.And(4, ei0, il.Const(4, mask));
+				ei0 = il.SetRegister(4, oper0->reg, ei0,
+						ppc->update_cr0 ? IL_FLAGWRITE_CR0_S : 0
+				);
+				il.AddInstruction(ei0);
+			}
+			break;
+
 
 		case PPC_INS_SLW:
 		case PPC_INS_SRW:
@@ -1585,8 +1668,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_EVSUBFW:
 		case PPC_INS_EVSUBIFW:
 		case PPC_INS_EVXOR:
-		case PPC_INS_EXTSB:
-		case PPC_INS_EXTSH:
 		case PPC_INS_EXTSW:
 		case PPC_INS_FABS:
 		case PPC_INS_FADD:
@@ -1634,7 +1715,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_FSUBS:
 		case PPC_INS_ICBI:
 		case PPC_INS_ICCCI:
-		case PPC_INS_ISEL:
 		case PPC_INS_ISYNC:
 		case PPC_INS_LD:
 		case PPC_INS_LDARX:
@@ -1710,7 +1790,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_RLDICL:
 		case PPC_INS_RLDICR:
 		case PPC_INS_RLDIMI:
-		case PPC_INS_RLWNM:
 		case PPC_INS_SLBIA:
 		case PPC_INS_SLBIE:
 		case PPC_INS_SLBMFEE:
@@ -2105,12 +2184,9 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_MTESR:
 		case PPC_INS_MTSPEFSCR:
 		case PPC_INS_MTTCR:
-		case PPC_INS_NOT:
 		case PPC_INS_ROTLD:
 		case PPC_INS_ROTLDI:
 		case PPC_INS_CLRLDI:
-		case PPC_INS_ROTLWI:
-		case PPC_INS_ROTLW:
 		case PPC_INS_SUB:
 		case PPC_INS_SUBC:
 		case PPC_INS_LWSYNC:

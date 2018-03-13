@@ -163,6 +163,7 @@ class PowerpcArchitecture: public Architecture
 	virtual bool GetInstructionText(const uint8_t* data, uint64_t addr, size_t& len, vector<InstructionTextToken>& result) override
 	{
 		bool rc = false;
+		bool capstoneWorkaround = false;
 		char buf[32];
 		int strlenMnem;
 		struct decomp_result res;
@@ -180,6 +181,20 @@ class PowerpcArchitecture: public Architecture
 		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			goto cleanup;
+		}
+
+		switch (insn->id)
+		{
+			case PPC_INS_CROR:
+			case PPC_INS_CRORC:
+			case PPC_INS_CRNOR:
+			case PPC_INS_CREQV:
+			case PPC_INS_CRXOR:
+			case PPC_INS_CRSET:
+			case PPC_INS_CRCLR:
+			case PPC_INS_CRNOT:
+			case PPC_INS_CRMOVE:
+				capstoneWorkaround = true;
 		}
 		
 		/* mnemonic */
@@ -201,7 +216,10 @@ class PowerpcArchitecture: public Architecture
 			switch(op->type) {
 				case PPC_OP_REG:
 					//MYLOG("pushing a register\n");
-					result.emplace_back(RegisterToken, GetRegisterName(op->reg));
+					if (capstoneWorkaround || (insn->id == PPC_INS_ISEL && i == 3))
+						result.emplace_back(TextToken, GetFlagName(op->reg - PPC_REG_R0));
+					else
+						result.emplace_back(RegisterToken, GetRegisterName(op->reg));
 					break;
 				case PPC_OP_IMM:
 					//MYLOG("pushing an integer\n");
@@ -309,7 +327,7 @@ class PowerpcArchitecture: public Architecture
 				else
 				{
 					if (op == LLIL_SET_REG)
-						left = il.GetExprForRegisterOrConstant(operands[1], size);
+						left = il.GetExprForRegisterOrConstant(operands[0], size);
 					else
 						left = il.GetExprForRegisterOrConstantOperation(op, size, operands, operandCount);
 
