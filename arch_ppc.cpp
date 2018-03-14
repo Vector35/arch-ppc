@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include <vector>
 using namespace std;
@@ -13,6 +14,7 @@ using namespace std;
 using namespace BinaryNinja; // for ::LogDebug, etc.
 
 #include "disassembler.h"
+#include "assembler.h"
 
 #include "il.h"
 #include "util.h"
@@ -670,6 +672,7 @@ class PowerpcArchitecture: public Architecture
 	/*
 	   semantic flag groups
 	 */
+
 	/*
 	virtual vector<uint32_t> GetAllSemanticFlagGroups() override
 	{
@@ -695,9 +698,9 @@ class PowerpcArchitecture: public Architecture
 		// flag group ids kept identical to flag ids
 		return { semGroup };
 	}
-	/*
 
 	//virtual std::map<uint32_t, BNLowLevelILFlagCondition> GetFlagConditionsForSemanticFlagGroup(uint32_t semGroup);
+	*/
 
 	/*
 		flag roles
@@ -1083,29 +1086,26 @@ class PowerpcArchitecture: public Architecture
 	bool Assemble(const string& code, uint64_t addr, DataBuffer& result, string& errors) override
 	{
 		MYLOG("%s()\n", __func__);
-		(void)addr;
-	
-		char *instrBytes=NULL, *err=NULL;
-		int instrBytesLen=0, errLen=0;
-	
-		int assembleResult;
-	
-		BNLlvmServicesInit();
-	
-		errors.clear();
-		assembleResult = BNLlvmServicesAssemble(code.c_str(), LLVM_SVCS_DIALECT_UNSPEC,
-		  "powerpc-none-none", LLVM_SVCS_CM_DEFAULT, LLVM_SVCS_RM_STATIC, 
-		  &instrBytes, &instrBytesLen, &err, &errLen);
-	
-		if(assembleResult || errLen) {
-			errors = err;
-			BNLlvmServicesAssembleFree(instrBytes, err);
+
+		/* prepend directives to command the assembler's origin and endianness */
+		string src;
+		char buf[1024];
+		sprintf(buf, ".org %" PRIx64 "\n", addr);
+		src += string(buf);
+		sprintf(buf, ".endian %s\n", (endian==BigEndian) ? "big":"little");
+		src += string(buf);
+		src += code;
+
+		/* assemble */	
+		vector<uint8_t> byteEncoding;
+		if(assemble_multiline(src, byteEncoding, errors)) {
+			MYLOG("assemble_multiline() failed, errors contains: %s\n", errors.c_str());
 			return false;
 		}
-	
+
 		result.Clear();
-		result.Append(instrBytes, instrBytesLen);
-		BNLlvmServicesAssembleFree(instrBytes, err);
+		//for(int i=0; i<byteEncoding.size(); ++i)
+		result.Append(&(byteEncoding[0]), byteEncoding.size());
 		return true;
 	}
 
