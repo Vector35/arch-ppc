@@ -340,6 +340,43 @@ class PowerpcArchitecture: public Architecture
 
 		switch (flag)
 		{
+			case IL_FLAG_XER_CA:
+				if (op == LLIL_ASR)
+				{
+					ExprId maskExpr;
+
+					if (operands[1].constant)
+					{
+						uint32_t mask = (1 << operands[1].value) - 1;
+						if (!mask)
+							return il.Const(0, 0);
+						maskExpr = il.Const(size, mask);
+					}
+					else
+					{
+						maskExpr = il.GetExprForRegisterOrConstant(operands[1], size);
+						maskExpr = il.Sub(size,
+							il.ShiftLeft(size,
+								il.Const(size, 1),
+								maskExpr),
+							il.Const(size, 1)
+						);
+					}
+
+					return il.And(0,
+						il.CompareSignedLessThan(size,
+							il.GetExprForRegisterOrConstant(operands[0], size),
+							il.Const(size, 0)
+						),
+						il.CompareNotEqual(size,
+							il.And(size,
+								il.GetExprForRegisterOrConstant(operands[0], size),
+								maskExpr),
+							il.Const(size, 0)
+						)
+					);
+				}
+				break;
 			case IL_FLAG_LT:
 			case IL_FLAG_LT_1:
 			case IL_FLAG_LT_2:
@@ -389,15 +426,19 @@ class PowerpcArchitecture: public Architecture
 
 	virtual ExprId GetSemanticFlagGroupLowLevelIL(uint32_t semGroup, LowLevelILFunction& il) override
 	{
-		uint32_t flag = IL_FLAG_LT + ((semGroup / 10) * 4); // get to flags from the right cr
-		flag += ((semGroup % 10) / 2);
+		uint32_t flagBase = (semGroup / 10) * 4; // get to flags from the right cr
 
-		ExprId res = il.Flag(flag);
+		switch (semGroup % 10)
+		{
+			case IL_FLAGGROUP_CR0_LT: return il.Flag(flagBase + IL_FLAG_LT);
+			case IL_FLAGGROUP_CR0_LE: return il.Not(0, il.Flag(flagBase + IL_FLAG_GT));
+			case IL_FLAGGROUP_CR0_GT: return il.Flag(flagBase + IL_FLAG_GT);
+			case IL_FLAGGROUP_CR0_GE: return il.Not(0, il.Flag(flagBase + IL_FLAG_LT));
+			case IL_FLAGGROUP_CR0_EQ: return il.Flag(flagBase + IL_FLAG_EQ);
+			case IL_FLAGGROUP_CR0_NE: return il.Not(0, il.Flag(flagBase + IL_FLAG_EQ));
+		}
 
-		if (semGroup & 1)
-			res = il.Not(0, res);
-
-		return res;
+		return il.Unimplemented();
 	}
 
 	virtual string GetRegisterName(uint32_t regId) override
@@ -724,7 +765,6 @@ class PowerpcArchitecture: public Architecture
 		uint32_t flag = IL_FLAG_LT + ((semGroup / 10) * 4); // get to flags from the right cr
 		flag += ((semGroup % 10) / 2);
 
-		// flag group ids kept identical to flag ids
 		return { flag };
 	}
 
