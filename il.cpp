@@ -482,7 +482,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_B: /* or BEQ, BLT, BGT */
 		case PPC_INS_BA:
 			REQUIRE1OP
-			ConditionalJump(arch, il, crx, ppc->bc, 4, oper0->imm, addr + 4);
+			ConditionalJump(arch, il, crx, ppc->bc, 4, (uint32_t) oper0->imm, addr + 4);
 			break;
 
 		/*

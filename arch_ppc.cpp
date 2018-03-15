@@ -113,7 +113,7 @@ class PowerpcArchitecture: public Architecture
 				if(ppc->bc == 0) {
 					switch(oper0->type) {
 						case PPC_OP_IMM:
-							result.AddBranch(UnconditionalBranch, oper0->imm);
+							result.AddBranch(UnconditionalBranch, (uint32_t) oper0->imm);
 							break;
 						default:
 							result.AddBranch(UnresolvedBranch);
@@ -122,13 +122,13 @@ class PowerpcArchitecture: public Architecture
 				else {
 					//printInstructionVerbose(&res);
 
-					result.AddBranch(FalseBranch, addr+4); /* fall-thru */
+					result.AddBranch(FalseBranch, (uint32_t) addr+4); /* fall-thru */
 
 					if(oper0->type == PPC_OP_IMM) {
-						result.AddBranch(TrueBranch, oper0->imm); /* branch taken */
+						result.AddBranch(TrueBranch, (uint32_t) oper0->imm); /* branch taken */
 					}
-					if(oper1->type == PPC_OP_IMM) {
-						result.AddBranch(TrueBranch, oper1->imm); /* branch taken */
+					else if(oper1->type == PPC_OP_IMM) {
+						result.AddBranch(TrueBranch, (uint32_t) oper1->imm); /* branch taken */
 					}
 					else {
 						result.AddBranch(UnresolvedBranch);
@@ -137,7 +137,7 @@ class PowerpcArchitecture: public Architecture
 
 				break;
 			case PPC_INS_BL:
-				result.AddBranch(CallDestination, oper0->imm);
+				result.AddBranch(CallDestination, (uint32_t) oper0->imm);
 				break;
 			case PPC_INS_BLR:
 				if(ppc->bc == PPC_BC_INVALID) /* unconditional */
@@ -226,25 +226,30 @@ class PowerpcArchitecture: public Architecture
 					break;
 				case PPC_OP_IMM:
 					//MYLOG("pushing an integer\n");
-					sprintf(buf, "0x%X", op->imm);
 
 					switch(insn->id) {
-						//case PPC_INS_B:
-						//case PPC_INS_BA:
-						//case PPC_INS_BC:
-						//case PPC_INS_BCCTR:
-						//case PPC_INS_BCCTRL:
-						//case PPC_INS_BCL:
-						//case PPC_INS_BCLR:
-						//case PPC_INS_BCLRL:
-
+						case PPC_INS_B:
+						case PPC_INS_BA:
+						case PPC_INS_BC:
+						case PPC_INS_BCL:
 						case PPC_INS_BL:
 						case PPC_INS_BLA:
-						case PPC_INS_BLR:
-						case PPC_INS_BLRL:
-							result.emplace_back(PossibleAddressToken, buf, op->imm, 4);
+							sprintf(buf, "0x%x", op->imm);
+							result.emplace_back(CodeRelativeAddressToken, buf, (uint32_t) op->imm, 4);
+							break;
+						case PPC_INS_ADDIS:
+						case PPC_INS_LIS:
+						case PPC_INS_ORIS:
+						case PPC_INS_XORIS:
+						case PPC_INS_ORI:
+							sprintf(buf, "0x%x", (uint16_t) op->imm);
+							result.emplace_back(IntegerToken, buf, (uint16_t) op->imm, 4);
 							break;
 						default:
+							if (op->imm < 0 && op->imm > -0x10000)
+								sprintf(buf, "-0x%x", -op->imm);
+							else
+								sprintf(buf, "0x%x", op->imm);
 							result.emplace_back(IntegerToken, buf, op->imm, 4);
 					}
 
