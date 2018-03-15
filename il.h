@@ -96,4 +96,61 @@ if a==b then c=0b001 (not setting SO, setting EQ)
 #define IL_FLAGCLASS_CR7_S 15
 #define IL_FLAGCLASS_CR7_U 16
 
+#define IL_FLAGGROUP_CR0_LT (0 + 0)
+#define IL_FLAGGROUP_CR0_LE (0 + 1)
+#define IL_FLAGGROUP_CR0_GT (0 + 2)
+#define IL_FLAGGROUP_CR0_GE (0 + 3)
+#define IL_FLAGGROUP_CR0_EQ (0 + 4)
+#define IL_FLAGGROUP_CR0_NE (0 + 5)
+
+#define IL_FLAGGROUP_CR1_LT (10 + 0)
+#define IL_FLAGGROUP_CR1_LE (10 + 1)
+#define IL_FLAGGROUP_CR1_GT (10 + 2)
+#define IL_FLAGGROUP_CR1_GE (10 + 3)
+#define IL_FLAGGROUP_CR1_EQ (10 + 4)
+#define IL_FLAGGROUP_CR1_NE (10 + 5)
+
+#define IL_FLAGGROUP_CR2_LT (20 + 0)
+#define IL_FLAGGROUP_CR2_LE (20 + 1)
+#define IL_FLAGGROUP_CR2_GT (20 + 2)
+#define IL_FLAGGROUP_CR2_GE (20 + 3)
+#define IL_FLAGGROUP_CR2_EQ (20 + 4)
+#define IL_FLAGGROUP_CR2_NE (20 + 5)
+
+#define IL_FLAGGROUP_CR3_LT (30 + 0)
+#define IL_FLAGGROUP_CR3_LE (30 + 1)
+#define IL_FLAGGROUP_CR3_GT (30 + 2)
+#define IL_FLAGGROUP_CR3_GE (30 + 3)
+#define IL_FLAGGROUP_CR3_EQ (30 + 4)
+#define IL_FLAGGROUP_CR3_NE (30 + 5)
+
+#define IL_FLAGGROUP_CR4_LT (40 + 0)
+#define IL_FLAGGROUP_CR4_LE (40 + 1)
+#define IL_FLAGGROUP_CR4_GT (40 + 2)
+#define IL_FLAGGROUP_CR4_GE (40 + 3)
+#define IL_FLAGGROUP_CR4_EQ (40 + 4)
+#define IL_FLAGGROUP_CR4_NE (40 + 5)
+
+#define IL_FLAGGROUP_CR5_LT (50 + 0)
+#define IL_FLAGGROUP_CR5_LE (50 + 1)
+#define IL_FLAGGROUP_CR5_GT (50 + 2)
+#define IL_FLAGGROUP_CR5_GE (50 + 3)
+#define IL_FLAGGROUP_CR5_EQ (50 + 4)
+#define IL_FLAGGROUP_CR5_NE (50 + 5)
+
+#define IL_FLAGGROUP_CR6_LT (60 + 0)
+#define IL_FLAGGROUP_CR6_LE (60 + 1)
+#define IL_FLAGGROUP_CR6_GT (60 + 2)
+#define IL_FLAGGROUP_CR6_GE (60 + 3)
+#define IL_FLAGGROUP_CR6_EQ (60 + 4)
+#define IL_FLAGGROUP_CR6_NE (60 + 5)
+
+#define IL_FLAGGROUP_CR7_LT (70 + 0)
+#define IL_FLAGGROUP_CR7_LE (70 + 1)
+#define IL_FLAGGROUP_CR7_GT (70 + 2)
+#define IL_FLAGGROUP_CR7_GE (70 + 3)
+#define IL_FLAGGROUP_CR7_EQ (70 + 4)
+#define IL_FLAGGROUP_CR7_NE (70 + 5)
+
+
 bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction& il, const uint8_t *data, uint64_t addr, decomp_result *res);

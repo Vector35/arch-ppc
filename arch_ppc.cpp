@@ -268,7 +268,7 @@ class PowerpcArchitecture: public Architecture
 			if(i < ppc->op_count-1) {
 				//MYLOG("pushing a comma\n");
 				result.emplace_back(OperandSeparatorToken, ", ");
-			}		
+			}
 		}
 		
 		rc = true;
@@ -322,20 +322,20 @@ class PowerpcArchitecture: public Architecture
 		}
 
 		auto liftOps = [&]() {
-				if (op == LLIL_SUB)
-				{
+			if (op == LLIL_SUB)
+			{
+				left = il.GetExprForRegisterOrConstant(operands[0], size);
+				right = il.GetExprForRegisterOrConstant(operands[1], size);
+			}
+			else
+			{
+				if (op == LLIL_SET_REG)
 					left = il.GetExprForRegisterOrConstant(operands[0], size);
-					right = il.GetExprForRegisterOrConstant(operands[1], size);
-				}
 				else
-				{
-					if (op == LLIL_SET_REG)
-						left = il.GetExprForRegisterOrConstant(operands[0], size);
-					else
-						left = il.GetExprForRegisterOrConstantOperation(op, size, operands, operandCount);
+					left = il.GetExprForRegisterOrConstantOperation(op, size, operands, operandCount);
 
-					right = il.Const(size, 0);
-				}
+				right = il.Const(size, 0);
+			}
 		};
 
 		switch (flag)
@@ -387,12 +387,18 @@ class PowerpcArchitecture: public Architecture
 	}
 
 
-	/*
 	virtual ExprId GetSemanticFlagGroupLowLevelIL(uint32_t semGroup, LowLevelILFunction& il) override
 	{
-		return il.Flag(semGroup);
+		uint32_t flag = IL_FLAG_LT + ((semGroup / 10) * 4); // get to flags from the right cr
+		flag += ((semGroup % 10) / 2);
+
+		ExprId res = il.Flag(flag);
+
+		if (semGroup & 1)
+			res = il.Not(0, res);
+
+		return res;
 	}
-	*/
 
 	virtual string GetRegisterName(uint32_t regId) override
 	{
@@ -594,7 +600,7 @@ class PowerpcArchitecture: public Architecture
 			case IL_FLAGWRITE_CR6_U:
 				return vector<uint32_t> {
 					IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
-				};	
+				};
 			
 			case IL_FLAGWRITE_CR7_S:
 			case IL_FLAGWRITE_CR7_U:
@@ -670,34 +676,99 @@ class PowerpcArchitecture: public Architecture
 	/*
 	   semantic flag groups
 	 */
-	/*
 	virtual vector<uint32_t> GetAllSemanticFlagGroups() override
 	{
 		return vector<uint32_t> {
-			IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
-			IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
-			IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
-			IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4,
-			IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
-			IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
-			IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
+			IL_FLAGGROUP_CR0_LT, IL_FLAGGROUP_CR0_LE, IL_FLAGGROUP_CR0_GT,
+			IL_FLAGGROUP_CR0_GE, IL_FLAGGROUP_CR0_EQ, IL_FLAGGROUP_CR0_NE, 
+			IL_FLAGGROUP_CR1_LT, IL_FLAGGROUP_CR1_LE, IL_FLAGGROUP_CR1_GT,
+			IL_FLAGGROUP_CR1_GE, IL_FLAGGROUP_CR1_EQ, IL_FLAGGROUP_CR1_NE, 
+			IL_FLAGGROUP_CR2_LT, IL_FLAGGROUP_CR2_LE, IL_FLAGGROUP_CR2_GT,
+			IL_FLAGGROUP_CR2_GE, IL_FLAGGROUP_CR2_EQ, IL_FLAGGROUP_CR2_NE, 
+			IL_FLAGGROUP_CR3_LT, IL_FLAGGROUP_CR3_LE, IL_FLAGGROUP_CR3_GT,
+			IL_FLAGGROUP_CR3_GE, IL_FLAGGROUP_CR3_EQ, IL_FLAGGROUP_CR3_NE, 
+			IL_FLAGGROUP_CR4_LT, IL_FLAGGROUP_CR4_LE, IL_FLAGGROUP_CR4_GT,
+			IL_FLAGGROUP_CR4_GE, IL_FLAGGROUP_CR4_EQ, IL_FLAGGROUP_CR4_NE, 
+			IL_FLAGGROUP_CR5_LT, IL_FLAGGROUP_CR5_LE, IL_FLAGGROUP_CR5_GT,
+			IL_FLAGGROUP_CR5_GE, IL_FLAGGROUP_CR5_EQ, IL_FLAGGROUP_CR5_NE, 
+			IL_FLAGGROUP_CR6_LT, IL_FLAGGROUP_CR6_LE, IL_FLAGGROUP_CR6_GT,
+			IL_FLAGGROUP_CR6_GE, IL_FLAGGROUP_CR6_EQ, IL_FLAGGROUP_CR6_NE, 
+			IL_FLAGGROUP_CR7_LT, IL_FLAGGROUP_CR7_LE, IL_FLAGGROUP_CR7_GT,
+			IL_FLAGGROUP_CR7_GE, IL_FLAGGROUP_CR7_EQ, IL_FLAGGROUP_CR7_NE, 
 		};
 	}
 
 	virtual std::string GetSemanticFlagGroupName(uint32_t semGroup) override
 	{
-		// flag group ids kept identical to flag ids
-		return GetFlagName(semGroup);
+		char name[16];
+		const char* suffix;
+
+		/* remove the cr part of the semGroup id from the equation */
+		switch (semGroup % 10)
+		{
+			case IL_FLAGGROUP_CR0_LT: suffix = "lt"; break;
+			case IL_FLAGGROUP_CR0_LE: suffix = "le"; break;
+			case IL_FLAGGROUP_CR0_GT: suffix = "gt"; break;
+			case IL_FLAGGROUP_CR0_GE: suffix = "ge"; break;
+			case IL_FLAGGROUP_CR0_EQ: suffix = "eq"; break;
+			case IL_FLAGGROUP_CR0_NE: suffix = "ne"; break;
+		}
+
+		snprintf(name, sizeof(name), "cr%d_%s", semGroup / 10, suffix);
+
+		return std::string(name);
 	}
 
 	virtual std::vector<uint32_t> GetFlagsRequiredForSemanticFlagGroup(uint32_t semGroup) override
 	{
-		// flag group ids kept identical to flag ids
-		return { semGroup };
-	}
-	/*
+		uint32_t flag = IL_FLAG_LT + ((semGroup / 10) * 4); // get to flags from the right cr
+		flag += ((semGroup % 10) / 2);
 
-	//virtual std::map<uint32_t, BNLowLevelILFlagCondition> GetFlagConditionsForSemanticFlagGroup(uint32_t semGroup);
+		// flag group ids kept identical to flag ids
+		return { flag };
+	}
+
+	virtual std::map<uint32_t, BNLowLevelILFlagCondition> GetFlagConditionsForSemanticFlagGroup(uint32_t semGroup) override
+	{
+		uint32_t flagClassBase = IL_FLAGCLASS_CR0_S + ((semGroup / 10) * 2);
+		uint32_t groupType = semGroup % 10;
+
+		switch (groupType)
+		{
+		case IL_FLAGGROUP_CR0_LT:
+			return map<uint32_t, BNLowLevelILFlagCondition> {
+				{flagClassBase    , LLFC_SLT},
+				{flagClassBase + 1, LLFC_ULT}
+			};
+		case IL_FLAGGROUP_CR0_LE:
+			return map<uint32_t, BNLowLevelILFlagCondition> {
+				{flagClassBase    , LLFC_SLE},
+				{flagClassBase + 1, LLFC_ULE}
+			};
+		case IL_FLAGGROUP_CR0_GT:
+			return map<uint32_t, BNLowLevelILFlagCondition> {
+				{flagClassBase    , LLFC_SGT},
+				{flagClassBase + 1, LLFC_UGT}
+			};
+		case IL_FLAGGROUP_CR0_GE:
+			return map<uint32_t, BNLowLevelILFlagCondition> {
+				{flagClassBase    , LLFC_SGE},
+				{flagClassBase + 1, LLFC_UGE}
+			};
+		case IL_FLAGGROUP_CR0_EQ:
+			return map<uint32_t, BNLowLevelILFlagCondition> {
+				{flagClassBase    , LLFC_E},
+				{flagClassBase + 1, LLFC_E}
+			};
+		case IL_FLAGGROUP_CR0_NE:
+			return map<uint32_t, BNLowLevelILFlagCondition> {
+				{flagClassBase    , LLFC_NE},
+				{flagClassBase + 1, LLFC_NE}
+			};
+		default:
+			return map<uint32_t, BNLowLevelILFlagCondition>();
+		}
+	}
 
 	/*
 		flag roles
@@ -853,7 +924,7 @@ class PowerpcArchitecture: public Architecture
 
 			PPC_REG_R0, PPC_REG_R1, PPC_REG_R2, PPC_REG_R3, PPC_REG_R4, PPC_REG_R5,  PPC_REG_R6, PPC_REG_R7,
 			PPC_REG_R8, PPC_REG_R9, PPC_REG_R10, PPC_REG_R11, PPC_REG_R12, PPC_REG_R13, PPC_REG_R14, PPC_REG_R15,
-			PPC_REG_R16, PPC_REG_R17, PPC_REG_R18, PPC_REG_R19,	PPC_REG_R20, PPC_REG_R21, PPC_REG_R22, PPC_REG_R23,
+			PPC_REG_R16, PPC_REG_R17, PPC_REG_R18, PPC_REG_R19, PPC_REG_R20, PPC_REG_R21, PPC_REG_R22, PPC_REG_R23,
 			PPC_REG_R24, PPC_REG_R25, PPC_REG_R26, PPC_REG_R27, PPC_REG_R28, PPC_REG_R29, PPC_REG_R30, PPC_REG_R31,
 
 			PPC_REG_V0, PPC_REG_V1, PPC_REG_V2, PPC_REG_V3, PPC_REG_V4, PPC_REG_V5, PPC_REG_V6, PPC_REG_V7,
@@ -1306,7 +1377,7 @@ class PowerpcArchitecture: public Architecture
 		if(endian == BigEndian)
 			iwAfter = bswap32(iwAfter);
 		*(uint32_t *)data = iwAfter;
-		return true;	
+		return true;
 	}
 
 	virtual bool InvertBranch(uint8_t* data, uint64_t addr, size_t len) override
@@ -1343,7 +1414,7 @@ class PowerpcArchitecture: public Architecture
 		if(endian == BigEndian)
 			iw = bswap32(iw);
 		*(uint32_t *)data = iw;
-		return true;	
+		return true;
 	}
 
 	virtual bool SkipAndReturnValue(uint8_t* data, uint64_t addr, size_t len, uint64_t value) override
@@ -1364,7 +1435,7 @@ class PowerpcArchitecture: public Architecture
 		if(endian == BigEndian)
 			iw = bswap32(iw);
 		*(uint32_t *)data = iw;
-		return true;	
+		return true;
 	}
 
 	/*************************************************************************/
@@ -1520,7 +1591,7 @@ public:
 	{
 		return vector<uint32_t>{
 			PPC_REG_R3, PPC_REG_R4, PPC_REG_R5, PPC_REG_R6,
-			PPC_REG_R7, PPC_REG_R8, PPC_REG_R9,	PPC_REG_R10
+			PPC_REG_R7, PPC_REG_R8, PPC_REG_R9, PPC_REG_R10
 			/* remaining arguments onto stack */
 		};
 	}
@@ -1573,7 +1644,7 @@ public:
 		return vector<uint32_t>{
 			PPC_REG_R0,
 			PPC_REG_R3, PPC_REG_R4, PPC_REG_R5, PPC_REG_R6,
-			PPC_REG_R7, PPC_REG_R8, PPC_REG_R9,	PPC_REG_R10
+			PPC_REG_R7, PPC_REG_R8, PPC_REG_R9, PPC_REG_R10
 		};
 	}
 
