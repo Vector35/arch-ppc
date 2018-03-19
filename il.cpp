@@ -127,139 +127,6 @@ static ExprId operToIL(LowLevelILFunction &il, struct cs_ppc_op *op,
 	return res;
 }
 
-/* INPUT:
-	- csBranchCode capstone branch code {PPC_BC_LT, PPC_BC_EQ, ...}
-
-   OUTPUT:
-	- BNLowLevelILFlagCondition {LLFC_E, LLFC_NE, ...}
-
-   remember that the LLFC_XXX are names of sets in IL namespace, and
-   architectures declare their architecture-specific flag names as
-   members of these predefined sets by responding to
-   GetFlagsRrequiredForFlagCondition()
-*/
-static ExprId bc2fc(LowLevelILFunction& il, int crx, int csBranchCode)
-{
-	MYLOG("switching on csBranchCode: %d\n", csBranchCode);
-	uint32_t flagBase = crx - PPC_REG_CR0;
-
-	switch(csBranchCode) {
-		case PPC_BC_LT: return il.FlagGroup((flagBase * 10) + IL_FLAGGROUP_CR0_LT);
-		case PPC_BC_LE: return il.FlagGroup((flagBase * 10) + IL_FLAGGROUP_CR0_LE);
-		case PPC_BC_GT: return il.FlagGroup((flagBase * 10) + IL_FLAGGROUP_CR0_GT);
-		case PPC_BC_GE: return il.FlagGroup((flagBase * 10) + IL_FLAGGROUP_CR0_GE);
-		case PPC_BC_EQ: return il.FlagGroup((flagBase * 10) + IL_FLAGGROUP_CR0_EQ);
-		case PPC_BC_NE: return il.FlagGroup((flagBase * 10) + IL_FLAGGROUP_CR0_NE);
-		case PPC_BC_SO:
-			/* summary overflow */
-			return il.Flag((flagBase * 4) + 3);
-		case PPC_BC_NS:
-			/* not summary overflow */
-			return il.Not(0, il.Flag((flagBase * 4) + 3));
-		default:
-			MYLOG("%s() returning unimplemented!\n", __func__);
-			return il.Unimplemented();
-	}
-}
-
-/* INPUT:
-	- csBranchCode capstone branch code {PPC_BC_LT, PPC_BC_EQ, ...}
-	- addrSize {32, 64}
-	- addrTrue ABSOLUTE
-	- addrFalse ABSOLUTE
-*/
-static void ConditionalJump(Architecture* arch, LowLevelILFunction& il, 
-  int crx, int csBranchCode, size_t addrSize, uint64_t addrTrue, uint64_t addrFalse)
-{
-	BNLowLevelILLabel *trueLabel = il.GetLabelForAddress(arch, addrTrue);
-	BNLowLevelILLabel *falseLabel = il.GetLabelForAddress(arch, addrFalse);
-
-	/* return early for unconditional jumps */
-	if(csBranchCode == PPC_BC_INVALID) {
-		ExprId expr;
-
-		if (trueLabel)
-			expr = il.Goto(*trueLabel);
-		else
-			expr = il.Jump(il.ConstPointer(addrSize, addrTrue));
-
-		il.AddInstruction(expr);
-		return;
-	}
-
-	ExprId clause = bc2fc(il, crx, csBranchCode);
-
-	if (trueLabel && falseLabel)
-	{
-		il.AddInstruction(il.If(clause, *trueLabel, *falseLabel));
-		return;
-	}
-
-	LowLevelILLabel trueCode, falseCode;
-
-	if (trueLabel)
-	{
-		il.AddInstruction(il.If(clause, *trueLabel, falseCode));
-		il.MarkLabel(falseCode);
-		il.AddInstruction(il.Jump(il.ConstPointer(addrSize, addrFalse)));
-		return;
-	}
-
-	if (falseLabel)
-	{
-		il.AddInstruction(il.If(clause, trueCode, *falseLabel));
-		il.MarkLabel(trueCode);
-		il.AddInstruction(il.Jump(il.ConstPointer(addrSize, addrTrue)));
-		return;
-	}
-
-	/* neither address had a label, create our own */
-	il.AddInstruction(il.If(clause, trueCode, falseCode));
-	il.MarkLabel(trueCode);
-	il.AddInstruction(il.Jump(il.ConstPointer(addrSize, addrTrue)));
-	il.MarkLabel(falseCode);
-	il.AddInstruction(il.Jump(il.ConstPointer(addrSize, addrFalse)));
-}
-
-/* 
-	ASSUME: 
-
-	this should work for any conditional, even if the number of operands differ
-	eg:
-	beqlr <operand0>               where operand0 is what's tested for zero
-	beq   <operand0>, <operand1>   where operand0 is what's tested for zero
-										 operand1 is the branch destination
-
-	in both cases, operand0 is what's tested for, so we consider it safe to
-	generalize here
-	
-*/
-static void conditionExecute(LowLevelILFunction &il, int crx,
-	ExprId trueIL0, ExprId trueIL1, cs_ppc *ppc)
-{
-	/* unconditional case */
-	if(ppc->bc == PPC_BC_INVALID) {
-		il.AddInstruction(trueIL0);
-		if(trueIL1 != (ExprId)-1) il.AddInstruction(trueIL1);
-		return;
-	}
-
-	// TODO: get sign-sensitivity right
-	// conditional branches simply look at the flags bits
-	// cmp vs. cmpl does signed vs. unsigned
-	/* if statement */
-	LowLevelILLabel trueLabel, falseLabel;
-	ExprId clause = bc2fc(il, crx, ppc->bc);
-	il.AddInstruction(il.If(clause, trueLabel, falseLabel));
-	/* true clause */
-	il.MarkLabel(trueLabel);
-	il.AddInstruction(trueIL0);
-	if(trueIL1 != (ExprId)-1) il.AddInstruction(trueIL1);
-	il.AddInstruction(il.Goto(falseLabel));
-	/* false clause */
-	il.MarkLabel(falseLabel);
-	return;
-}
 
 /* map PPC_REG_CRX to an IL flagwrite type (a named set of written flags */
 int crxToFlagWriteType(int crx, bool signedComparison = true)
@@ -288,6 +155,234 @@ int crxToFlagWriteType(int crx, bool signedComparison = true)
 	}
 }
 
+
+static ExprId ExtractConditionClause(LowLevelILFunction& il, uint8_t crBit, bool negate = false)
+{
+	uint32_t flagBase = (crBit / 4) * 10;
+
+	switch (crBit & 3)
+	{
+		case IL_FLAG_LT:
+			if (negate) return il.FlagGroup(flagBase + IL_FLAGGROUP_CR0_GE);
+			else        return il.FlagGroup(flagBase + IL_FLAGGROUP_CR0_LT);
+		case IL_FLAG_GT:
+			if (negate) return il.FlagGroup(flagBase + IL_FLAGGROUP_CR0_LE);
+			else        return il.FlagGroup(flagBase + IL_FLAGGROUP_CR0_GT);
+		case IL_FLAG_EQ:
+			if (negate) return il.FlagGroup(flagBase + IL_FLAGGROUP_CR0_NE);
+			else        return il.FlagGroup(flagBase + IL_FLAGGROUP_CR0_EQ);
+	}
+
+	ExprId result = il.Flag(crBit);
+
+	if (negate)
+		result = il.Not(0, result);
+
+	return result;
+}
+
+
+static bool LiftConditionalBranch(LowLevelILFunction& il, uint8_t bo, uint8_t bi, BNLowLevelILLabel& takenLabel, BNLowLevelILLabel& falseLabel)
+{
+	bool testsCtr = !(bo & 4);
+	bool testsCrBit = !(bo & 0x10);
+	bool isConditional = testsCtr || testsCrBit;
+
+	if (testsCtr)
+	{
+		ExprId cond, left, right;
+
+		il.AddInstruction(
+			il.SetRegister(4, PPC_REG_CTR,
+				il.Sub(4,
+					il.Register(4, PPC_REG_CTR),
+					il.Const(4, 1))));
+
+		left = il.Register(4, PPC_REG_CTR);
+		right = il.Const(4, 0);
+
+		if (bo & 2)
+			cond = il.CompareEqual(4, left, right);
+		else
+			cond = il.CompareNotEqual(4, left, right);
+
+		if (!testsCrBit)
+		{
+			il.AddInstruction(il.If(cond, takenLabel, falseLabel));
+		}
+		else
+		{
+			LowLevelILLabel trueLabel;
+			il.AddInstruction(il.If(cond, trueLabel, falseLabel));
+			il.MarkLabel(trueLabel);
+		}
+	}
+
+	if (testsCrBit)
+	{
+		ExprId cond = ExtractConditionClause(il, bi, !(bo & 8));
+		il.AddInstruction(il.If(cond, takenLabel, falseLabel));
+	}
+
+	return isConditional;
+}
+
+
+static bool LiftBranches(Architecture* arch, LowLevelILFunction &il, const uint8_t* data, uint64_t addr)
+{
+	uint32_t insn = bswap32(*(const uint32_t *) data);
+	bool lk = insn & 1;
+
+	switch (insn >> 26)
+	{
+		case 18: /* b (b, ba, bl, bla) */
+		{
+			uint32_t target = insn & 0x03fffffc;
+
+			/* sign extend target */
+			if ((target >> 25) & 1)
+				target |= 0xfc000000;
+
+			/* account for absolute addressing */
+			if (!(insn & 2))
+				target += (uint32_t) addr;
+
+			BNLowLevelILLabel *label = il.GetLabelForAddress(arch, target);
+
+			if (label)
+			{
+				/* branch to an instruction within the same function -- take
+				 * 'lk' bit behavior into account, but don't emit as a call
+				 */
+				if (lk)
+					il.AddInstruction(il.SetRegister(4, PPC_REG_LR, il.ConstPointer(4, addr + 4)));
+
+				il.AddInstruction(il.Goto(*label));
+			}
+			else
+			{
+				ExprId dest = il.ConstPointer(4, target);
+
+				if (lk)
+					il.AddInstruction(il.Call(dest));
+				else
+					il.AddInstruction(il.Jump(dest));
+			}
+
+			break;
+		}
+		case 16: /* bc */
+		{
+			uint32_t target = insn & 0xfffc;
+			uint8_t bo = (insn >> 21) & 0x1f;
+			uint8_t bi = (insn >> 16) & 0x1f;
+
+			/* sign extend target */
+			if ((target >> 15) & 1)
+				target |= 0xffff0000;
+
+			/* account for absolute addressing */
+			if (!(insn & 2))
+				target += (uint32_t) addr;
+
+			BNLowLevelILLabel *existingTakenLabel = il.GetLabelForAddress(arch, target);
+			BNLowLevelILLabel *existingFalseLabel = il.GetLabelForAddress(arch, addr + 4);
+
+			if (lk)
+				il.AddInstruction(il.SetRegister(4, PPC_REG_LR, il.ConstPointer(4, addr + 4)));
+
+			LowLevelILLabel takenLabelManual, falseLabelManual;
+			BNLowLevelILLabel* takenLabel = existingTakenLabel;
+			BNLowLevelILLabel* falseLabel = existingFalseLabel;
+
+			if (!takenLabel)
+				takenLabel = &takenLabelManual;
+
+			if (!falseLabel)
+				falseLabel = &falseLabelManual;
+
+			bool wasConditionalBranch = LiftConditionalBranch(il, bo, bi, *takenLabel, *falseLabel);
+
+			if (wasConditionalBranch && !existingTakenLabel)
+				il.MarkLabel(*takenLabel);
+
+			if (!wasConditionalBranch && existingTakenLabel)
+				il.AddInstruction(il.Goto(*takenLabel));
+			else if (target != addr + 4)
+			{
+				if (lk)
+				{
+					il.AddInstruction(il.Call(il.ConstPointer(4, target)));
+					if (wasConditionalBranch)
+						il.AddInstruction(il.Goto(*falseLabel));
+				}
+				else
+					il.AddInstruction(il.Jump(il.ConstPointer(4, target)));
+			}
+
+			if (wasConditionalBranch && !existingFalseLabel)
+				il.MarkLabel(*falseLabel);
+
+			break;
+		}
+		case 19: /* bcctr, bclr */
+		{
+			uint8_t bo = (insn >> 21) & 0x1f;
+			uint8_t bi = (insn >> 16) & 0x1f;
+			bool blr = false;
+			ExprId expr;
+
+			switch ((insn >> 1) & 0x3ff)
+			{
+				case 16:
+					expr = il.Register(4, PPC_REG_LR);
+					blr = true;
+					break;
+				case 528:
+					if (!(bo & 4))
+						return false;
+					expr = il.Register(4, PPC_REG_CTR);
+					break;
+				default:
+					return false;
+			}
+
+			BNLowLevelILLabel *existingFalseLabel = il.GetLabelForAddress(arch, addr + 4);
+			BNLowLevelILLabel* falseLabel = existingFalseLabel;
+
+			LowLevelILLabel takenLabel, falseLabelManual;
+
+			if (!falseLabel)
+				falseLabel = &falseLabelManual;
+
+			bool wasConditionalBranch = LiftConditionalBranch(il, bo, bi, takenLabel, *falseLabel);
+
+			if (wasConditionalBranch)
+				il.MarkLabel(takenLabel);
+
+			if (lk)
+			{
+				il.AddInstruction(il.Call(expr));
+				if (wasConditionalBranch)
+					il.AddInstruction(il.Goto(*falseLabel));
+			}
+			else if (blr)
+				il.AddInstruction(il.Return(expr));
+			else
+				il.AddInstruction(il.Jump(expr));
+
+			if (wasConditionalBranch && !existingFalseLabel)
+				il.MarkLabel(*falseLabel);
+
+			break;
+		}
+		default:
+			return false;
+	}
+
+	return true;
+}
+
 /* returns TRUE - if this IL continues
           FALSE - if this IL terminates a block */
 bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
@@ -296,12 +391,18 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 	int i;
 	bool rc = true;
 
+	/* bypass capstone path for *all* branching instructions; capstone
+	 * is too difficult to work with and is outright broken for some
+	 * branch instructions (bdnz, etc.)
+	 */
+	if (LiftBranches(arch, il, data, addr))
+		return true;
+
 	struct cs_insn *insn = &(res->insn);
 	struct cs_detail *detail = &(res->detail);
 	struct cs_ppc *ppc = &(detail->ppc);
 
 	/* create convenient access to instruction operands */
-	int crx = PPC_REG_INVALID;
 	cs_ppc_op *oper0=NULL, *oper1=NULL, *oper2=NULL, *oper3=NULL, *oper4=NULL;
 	#define REQUIRE1OP if(!oper0) goto ReturnUnimpl;
 	#define REQUIRE2OPS if(!oper0 || !oper1) goto ReturnUnimpl;
@@ -323,14 +424,10 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 	if(ppc->bc != PPC_BC_INVALID) {
 		if(oper0 && oper0->type == PPC_OP_REG && oper0->reg >= PPC_REG_CR0 && 
 		  ppc->operands[0].reg <= PPC_REG_CR7) {
-	
-			crx = oper0->reg;
 			oper0 = oper1;
 			oper1 = oper2;
 			oper2 = oper3;
 			oper3 = NULL;
-		} else {
-			crx = PPC_REG_CR0;
 		}
 	}
 
@@ -473,165 +570,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			ei0 = il.And(4, operToIL(il, oper1), ei0);
 			ei0 = il.SetRegister(4, oper0->reg, ei0, IL_FLAGWRITE_CR0_S);
 			il.AddInstruction(ei0);
-			break;
-
-		/* WARNING! when address mode is relative, capstone will return an
-			immediate whose value is NOT the actual operand, but the calculated
-			absolute address (from the address that capstone was asked to
-			disassemble plus the displacement) */
-		case PPC_INS_B: /* or BEQ, BLT, BGT */
-		case PPC_INS_BA:
-			REQUIRE1OP
-			ConditionalJump(arch, il, crx, ppc->bc, 4, (uint32_t) oper0->imm, addr + 4);
-			break;
-
-		/*
-			branch [CTR conditional, to ctr [, and link]]
-
-			these conditions are the CTR ones (decrement, then test, etc.)
-			TODO
-		*/
-		case PPC_INS_BC:
-		case PPC_INS_BCCTR:
-			rc = false;
-		case PPC_INS_BCCTRL:
-			REQUIRE2OPS
-			if(ppc->op_count == 1)
-				ei0 = operToIL(il, oper0); // EffAddr
-			else
-				ei0 = operToIL(il, oper1); // EffAddr
-
-			break;
-
-		/*
-			branch (unconditional) to ctr [and link]
-		*/
-		case PPC_INS_BCTR: /* branch to counter */
-			il.AddInstruction(il.Jump(il.Register(4, PPC_REG_CTR)));
-			break;
-
-		case PPC_INS_BCTRL: /* branch to counter, link */
-			il.AddInstruction(il.Call(il.Register(4, PPC_REG_CTR)));
-			break;
-
-		// KEY:
-		// {BD}      = {"branch, decrement ctr"}
-		// {NZ, Z}   = {"when not zero", "when zero"}
-		// {T, F}    = {"and condition true", "and condition false"}
-		// {, A, LR} = {"relative", "absolute", "link reg"}
-		// {L}       = {"and link"}
-		// condition codes NOT affected
-//		case PPC_INS_BDNZ:
-//		case PPC_INS_BDNZA:
-//		case PPC_INS_BDNZL:
-//		case PPC_INS_BDNZLA:
-//		case PPC_INS_BDNZLR:
-//		case PPC_INS_BDNZLRL:
-//		case PPC_INS_BDZ:
-//		case PPC_INS_BDZA:
-//		case PPC_INS_BDZL:
-//		case PPC_INS_BDZLA:
-//		case PPC_INS_BDZLR:
-//		case PPC_INS_BDZLRL:
-//		{
-//			LowLevelILLabel trueLabel, falseLabel;
-//
-//			/* everything decrements ctr */
-//			ei0 = il.SetRegister(4, PPC_REG_CTR,
-//				il.Sub(4,
-//					il.Register(4, PPC_REG_CTR),
-//					il.Const(4, 1)
-//				)
-//			);
-//
-//			il.AddInstruction(ei0);
-//		
-//			/* compare ctr to zero, or not zero */
-//			switch(insn->id) {
-//				case PPC_INS_BDNZ:
-//				case PPC_INS_BDNZA:
-//				case PPC_INS_BDNZL:
-//				case PPC_INS_BDNZLA:
-//				case PPC_INS_BDNZLR:
-//				case PPC_INS_BDNZLRL:
-//					ei0 = il.CompareNotEqual(4,
-//						il.Register(4, PPC_REG_CTR), 
-//						il.Const(4, 1),
-//						trueLabel, falseLabel
-//					);
-//					break;
-//
-//				default:
-//					ei0 = il.CompareEqual(4,
-//						il.Register(4, PPC_REG_CTR), 
-//						il.Const(4, 1),
-//						trueLabel, falseLabel
-//					);
-//			}
-//
-//			/* if comparison true */
-//			il.MarkLabel(trueLabel);
-//
-//			/* type of addressing*/
-//			switch(insn->id) {
-//				/* relative */
-//				case PPC_INS_BDNZ:
-//				case PPC_INS_BDZ:
-//				case PPC_INS_BDNZL:
-//				case PPC_INS_BDZL:
-//
-//				/* absolute */
-//				case PPC_INS_BDNZA:
-//				case PPC_INS_BDNZLA:
-//				case PPC_INS_BDZA:
-//				case PPC_INS_BDZLA:
-//					REQUIRE1OP
-//					il.AddInstruction(il.Jump(operToIL(il, oper0)));
-//					break;
-//
-//				/* to LR */
-//				case PPC_INS_BDNZLR:
-//				case PPC_INS_BDNZLRL:
-//				case PPC_INS_BDZLR:
-//				case PPC_INS_BDZLRL:
-//			
-//					ei0 = il.CompareNotEqual(4,
-//						il.Register(4, PPC_REG_CTR), 
-//						il.Const(4, 1),
-//						trueLabel, falseLabel
-//					);
-//					il.AddInstruction(ei0);
-//					il.
-//					break;
-//
-//				default:
-//					ei0 = il.CompareEqual(4,
-//						il.Register(4, PPC_REG_CTR), 
-//						il.Const(4, 1),
-//						trueLabel, falseLabel
-//					);
-//			}
-//
-//			/* false? skip down here */
-//			il.MarkLabel(falseLabel);
-//		}
-
-		/* capstone makes the oper0 into abs address, no need to add displacement */
-		case PPC_INS_BLA: /* branch, link (absolute) */
-		case PPC_INS_BL: /* branch, link */
-			REQUIRE1OP
-			ei0 = il.Call(operToIL(il, oper0, OTI_IMM_CPTR));
-			conditionExecute(il, crx, ei0, -1, ppc);
-			break;
-
-		case PPC_INS_BLRL: /* branch to LR, link */
-			ei0 = il.Call(il.Register(4, PPC_REG_LR));
-			conditionExecute(il, crx, ei0, -1, ppc);
-			break;
-
-		case PPC_INS_BLR: /* branch to LR */
-			ei0 = il.Return(il.Register(4, PPC_REG_LR));
-			conditionExecute(il, crx, ei0, -1, ppc);
 			break;
 
 		case PPC_INS_CMPW: /* compare (signed) word(32-bit) */
@@ -1481,6 +1419,9 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			il.AddInstruction(il.SystemCall());
 			break;
 
+		case PPC_INS_RFI:
+			il.AddInstruction(il.Return(il.Unimplemented()));
+			break;
 
 		case PPC_INS_TRAP:
 			il.AddInstruction(il.Trap(0));
@@ -1793,7 +1734,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_POPCNTW:
 		case PPC_INS_RFCI:
 		case PPC_INS_RFDI:
-		case PPC_INS_RFI:
 		case PPC_INS_RFID:
 		case PPC_INS_RFMCI:
 		case PPC_INS_RLDCL:

@@ -87,74 +87,101 @@ class PowerpcArchitecture: public Architecture
 	{
 		struct decomp_result res;
 		struct cs_insn *insn = &(res.insn);
-		struct cs_detail *detail = &(res.detail);
-		struct cs_ppc *ppc = &(detail->ppc);
-		cs_ppc_op *oper0 = &(ppc->operands[0]);
-		cs_ppc_op *oper1 = &(ppc->operands[1]);
-
-		bool rc = false;
 
 		//MYLOG("%s()\n", __func__);
 
 		if (maxLen < 4) {
 			MYLOG("ERROR: need at least 4 bytes\n");
-			goto cleanup;
+			return false;
 		}
 
 		/* decompose the instruction to get branch info */
 		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
-			goto cleanup;
+			return false;
+		}
+
+		uint32_t raw_insn = bswap32(*(const uint32_t *) data);
+		switch (raw_insn >> 26)
+		{
+			case 18: /* b (b, ba, bl, bla) */
+			{
+				uint32_t target = raw_insn & 0x03fffffc;
+
+				/* sign extend target */
+				if ((target >> 25) & 1)
+					target |= 0xfc000000;
+
+				/* account for absolute addressing */
+				if (!(raw_insn & 2))
+					target += (uint32_t) addr;
+
+				if (raw_insn & 1)
+					result.AddBranch(CallDestination, target);
+				else
+					result.AddBranch(UnconditionalBranch, target);
+
+				break;
+			}
+			case 16: /* bc */
+			{
+				uint32_t target = raw_insn & 0xfffc;
+				uint8_t bo = (raw_insn >> 21) & 0x1f;
+				bool lk = raw_insn & 1;
+
+				/* sign extend target */
+				if ((target >> 15) & 1)
+					target |= 0xffff0000;
+
+				/* account for absolute addressing */
+				if (!(raw_insn & 2))
+					target += (uint32_t) addr;
+
+				if (target != addr + 4)
+				{
+					if ((bo & 0x14) == 0x14)
+						result.AddBranch(lk ? CallDestination : UnconditionalBranch, target);
+					else if (!lk)
+					{
+						result.AddBranch(FalseBranch, addr + 4);
+						result.AddBranch(TrueBranch, target);
+					}
+				}
+
+				break;
+			}
+			case 19: /* bcctr, bclr */
+			{
+				uint8_t bo = (raw_insn >> 21) & 0x1f;
+				bool lk = raw_insn & 1;
+				bool blr = false;
+
+				switch ((raw_insn >> 1) & 0x3ff)
+				{
+					case 16:
+						blr = true;
+					case 528:
+						if ((bo & 0x14) == 0x14 && !lk)
+							result.AddBranch(blr ? FunctionReturn : UnresolvedBranch);
+
+						break;
+				}
+
+				break;
+			}
 		}
 
 		switch(insn->id) {
-			case PPC_INS_B:
-				/* if no branch code -> unconditional */
-				if(ppc->bc == 0) {
-					switch(oper0->type) {
-						case PPC_OP_IMM:
-							result.AddBranch(UnconditionalBranch, (uint32_t) oper0->imm);
-							break;
-						default:
-							result.AddBranch(UnresolvedBranch);
-					}
-				}
-				else {
-					//printInstructionVerbose(&res);
-
-					result.AddBranch(FalseBranch, (uint32_t) addr+4); /* fall-thru */
-
-					if(oper0->type == PPC_OP_IMM) {
-						result.AddBranch(TrueBranch, (uint32_t) oper0->imm); /* branch taken */
-					}
-					else if(oper1->type == PPC_OP_IMM) {
-						result.AddBranch(TrueBranch, (uint32_t) oper1->imm); /* branch taken */
-					}
-					else {
-						result.AddBranch(UnresolvedBranch);
-					}
-				}
-
-				break;
-			case PPC_INS_BL:
-				result.AddBranch(CallDestination, (uint32_t) oper0->imm);
-				break;
-			case PPC_INS_BLR:
-				if(ppc->bc == PPC_BC_INVALID) /* unconditional */
-					result.AddBranch(FunctionReturn);
-
-				break;
-			case PPC_INS_BCTR:
 			case PPC_INS_TRAP:
+				result.AddBranch(UnresolvedBranch);
+				break;
+			case PPC_INS_RFI:
 				result.AddBranch(UnresolvedBranch);
 				break;
 		}
 
 		result.length = 4;
-
-		rc = true;
-		cleanup:
-		return rc;
+		return true;
 	}
 
 	/* populate the vector result with InstructionTextToken
@@ -1357,14 +1384,6 @@ class PowerpcArchitecture: public Architecture
 
 	/*************************************************************************/
 
-	uint32_t bswap32(uint32_t x)
-	{
-		return ((x&0xFF)<<24) |
-			((x&0xFF00)<<8) |
-			((x&0xFF0000)>>8) |
-			((x&0xFF000000)>>24);
-	}
-
 	virtual bool ConvertToNop(uint8_t* data, uint64_t, size_t len) override
 	{
 		(void)len;
@@ -1656,11 +1675,16 @@ public:
 	virtual vector<uint32_t> GetCallerSavedRegisters() override
 	{
 		return vector<uint32_t>{
-			PPC_REG_R13, PPC_REG_R14, PPC_REG_R15, PPC_REG_R16,
-			PPC_REG_R17, PPC_REG_R18, PPC_REG_R19, PPC_REG_R20,
-			PPC_REG_R21, PPC_REG_R22, PPC_REG_R23, PPC_REG_R24,
-			PPC_REG_R25, PPC_REG_R26, PPC_REG_R27, PPC_REG_R28,
-			PPC_REG_R29, PPC_REG_R30, PPC_REG_R31
+			PPC_REG_R0, PPC_REG_R2, PPC_REG_R3, PPC_REG_R4,
+			PPC_REG_R5, PPC_REG_R6, PPC_REG_R7, PPC_REG_R8,
+			PPC_REG_R9, PPC_REG_R10, PPC_REG_R12,
+
+			PPC_REG_F0, PPC_REG_F1, PPC_REG_F2, PPC_REG_F3,
+			PPC_REG_F4, PPC_REG_F5, PPC_REG_F6, PPC_REG_F7,
+			PPC_REG_F8, PPC_REG_F9, PPC_REG_F10, PPC_REG_F11,
+			PPC_REG_F12, PPC_REG_F13,
+			
+			PPC_REG_LR, PPC_REG_CTR,
 		};
 	}
 
