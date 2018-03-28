@@ -361,11 +361,7 @@ class PowerpcArchitecture: public Architecture
 			}
 			else
 			{
-				if (op == LLIL_SET_REG)
-					left = il.GetExprForRegisterOrConstant(operands[0], size);
-				else
-					left = il.GetExprForRegisterOrConstantOperation(op, size, operands, operandCount);
-
+				left = il.GetExprForRegisterOrConstantOperation(op, size, operands, operandCount);
 				right = il.Const(size, 0);
 			}
 		};
