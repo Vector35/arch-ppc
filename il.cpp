@@ -249,7 +249,7 @@ static bool LiftBranches(Architecture* arch, LowLevelILFunction &il, const uint8
 
 			BNLowLevelILLabel *label = il.GetLabelForAddress(arch, target);
 
-			if (label)
+			if (label && !(lk && (target != (addr+4))))
 			{
 				/* branch to an instruction within the same function -- take
 				 * 'lk' bit behavior into account, but don't emit as a call
