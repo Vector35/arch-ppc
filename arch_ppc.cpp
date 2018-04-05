@@ -19,6 +19,26 @@ using namespace BinaryNinja; // for ::LogDebug, etc.
 #include "il.h"
 #include "util.h"
 
+enum MachoPPCRelocationType
+{
+	PPC_RELOC_VANILLA = 0,
+	PPC_RELOC_PAIR = 1,
+	PPC_RELOC_BR14 = 2,
+	PPC_RELOC_BR24 = 3,
+	PPC_RELOC_HI16 = 4,
+	PPC_RELOC_LO16 = 5,
+	PPC_RELOC_HA16 = 6,
+	PPC_RELOC_LO14 = 7,
+	PPC_RELOC_SECTDIFF = 8,
+	PPC_RELOC_PB_LA_PTR = 9,
+	PPC_RELOC_HI16_SECTDIFF = 10,
+	PPC_RELOC_LO16_SECTDIFF = 11,
+	PPC_RELOC_HA16_SECTDIFF = 12,
+	PPC_RELOC_JBSR = 13,
+	PPC_RELOC_LO14_SECTDIFF = 14,
+	PPC_RELOC_LOCAL_SECTDIFF = 15
+};
+
 /* class Architecture from binaryninjaapi.h */
 class PowerpcArchitecture: public Architecture
 {
