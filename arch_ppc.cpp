@@ -406,6 +406,11 @@ class PowerpcArchitecture: public Architecture
 	{
 		bool rc = false;
 
+		if (len < 4) {
+			MYLOG("ERROR: need at least 4 bytes\n");
+			goto cleanup;
+		}
+
 		//if(addr >= 0x10000300 && addr <= 0x10000320) {
 		//	MYLOG("%s(data, 0x%llX, 0x%zX, il)\n", __func__, addr, len);
 		//}
@@ -414,7 +419,7 @@ class PowerpcArchitecture: public Architecture
 
 		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
-			il.AddInstruction(il.Unimplemented());
+			il.AddInstruction(il.Undefined());
 			goto cleanup;
 		}
 
