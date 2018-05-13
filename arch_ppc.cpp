@@ -51,8 +51,8 @@ enum ElfPpcRelocationType
 	R_PPC_ADDR14          = 7, // 16bit address, 2 bits ignored
 	R_PPC_ADDR14_BRTAKEN  = 8,
 	R_PPC_ADDR14_BRNTAKEN = 9,
-	R_PPC_REL24           = 10,	// PC relative 26 bit
-	R_PPC_REL14           = 11,	// PC relative 16 bit
+	R_PPC_REL24           = 10, // PC relative 26 bit
+	R_PPC_REL14           = 11, // PC relative 16 bit
 	R_PPC_REL14_BRTAKEN   = 12,
 	R_PPC_REL14_BRNTAKEN  = 13,
 	R_PPC_GOT16           = 14,
@@ -1821,6 +1821,74 @@ public:
 	}
 };
 
+uint16_t bswap16(uint16_t x)
+{
+	return (x >> 8) | (x << 8);
+}
+
+class PpcElfRelocationHandler: public RelocationHandler
+{
+public:
+	PpcElfRelocationHandler()
+	{}
+
+
+	virtual bool ApplyRelocation(Ref<BinaryView> view, Ref<Architecture> arch, Ref<Relocation> reloc, uint8_t* dest, size_t len) override
+	{
+		(void)view;
+		auto info = reloc->GetInfo();
+		uint32_t* dest32 = (uint32_t*)dest;
+		uint16_t* dest16 = (uint16_t*)dest;
+		auto swap = [&arch](uint32_t x) { return (arch->GetEndianness() == LittleEndian)? x : bswap32(x); };
+		uint64_t target = reloc->GetTarget();
+		uint8_t* targetBytes = (uint8_t*)(&target);
+		switch (info.nativeType)
+		{
+		case R_PPC_ADDR16_LO: dest16[0] = bswap16(reloc->GetTarget() & 0xffff); break;
+		case R_PPC_ADDR16_HA: dest16[0] = bswap16((reloc->GetTarget() >> 16) & 0xffff); break;
+		case R_PPC_REL24:
+			target = (target + (bswap32(dest32[0]) & 0xffffff) - reloc->GetReloc());
+			dest[1] = targetBytes[2];
+			dest[2] = targetBytes[1];
+			dest[3] = targetBytes[0]; break;
+		case R_PPC_JMP_SLOT:
+		case R_PPC_GLOB_DAT:
+		case R_PPC_COPY:
+			dest32[0] = bswap32(target);
+			break;
+
+		// TODO: Need to test these before enabling them
+		// case R_PPC_ADDR32:
+		// 	dest32[0] = bswap32(target + dest32[0]);
+		// 	break;
+		// case R_PPC_ADDR24:
+		// 	target = (target + (bswap32(dest32[0]) & 0xffffff) - reloc->GetReloc());
+		// 	dest[1] = targetBytes[2];
+		// 	dest[2] = targetBytes[1];
+		// 	dest[3] = targetBytes[0]; break;
+		}
+		return true;
+	}
+
+
+	virtual bool GetRelocationInfo(Ref<BinaryView> view, Ref<Architecture> arch, vector<BNRelocationInfo>& result) override
+	{
+		(void)view; (void)arch; (void)result;
+		for (auto& reloc : result)
+		{
+			reloc.type = StandardRelocationType;
+			switch (reloc.nativeType)
+			{
+			case R_PPC_COPY: reloc.type = ELFCopyRelocationType; break;
+			case R_PPC_GLOB_DAT: reloc.type = ELFGlobalRelocationType; break;
+			case R_PPC_JMP_SLOT: reloc.type = ELFJumpSlotRelocationType; break;
+			}
+		}
+		return true;
+	}
+};
+
+
 extern "C"
 {
 	BINARYNINJAPLUGIN bool CorePluginInit()
@@ -1845,6 +1913,7 @@ extern "C"
 		ppc->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
 		ppc->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
 
+		ppc->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		/* call the STATIC RegisterArchitecture with "Mach-O"
 			which invokes the "Mach-O" INSTANCE of RegisterArchitecture,
 			supplied with CPU_TYPE_POWERPC from machoview.h */
