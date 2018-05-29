@@ -2723,7 +2723,7 @@ bool fmt_match(string fmt, string str, vector<string>& result)
 				goto cleanup;
 			int start = j;
 			j += 1;
-			while(isalnum(str[j]))
+			while(isalnum(str[j]) || str[j]=='_')
 				j += 1;
 			result.push_back(str.substr(start, j-start));
 			i += 2;
