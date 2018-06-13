@@ -153,4 +153,4 @@ if a==b then c=0b001 (not setting SO, setting EQ)
 #define IL_FLAGGROUP_CR7_NE (70 + 5)
 
 
-bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction& il, const uint8_t *data, uint64_t addr, decomp_result *res);
+bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction& il, const uint8_t *data, uint64_t addr, decomp_result *res, bool le);

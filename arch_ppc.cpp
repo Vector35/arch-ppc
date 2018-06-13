@@ -103,7 +103,11 @@ class PowerpcArchitecture: public Architecture
 			return false;
 		}
 
-		uint32_t raw_insn = bswap32(*(const uint32_t *) data);
+		uint32_t raw_insn = *(const uint32_t *) data;
+
+		if (endian == BigEndian)
+			raw_insn = bswap32(raw_insn);
+
 		switch (raw_insn >> 26)
 		{
 			case 18: /* b (b, ba, bl, bla) */
@@ -332,7 +336,7 @@ class PowerpcArchitecture: public Architecture
 			goto cleanup;
 		}
 
-		rc = GetLowLevelILForPPCInstruction(this, il, data, addr, &res);
+		rc = GetLowLevelILForPPCInstruction(this, il, data, addr, &res, endian == LittleEndian);
 		len = 4;
 
 		cleanup:
@@ -1740,6 +1744,9 @@ extern "C"
 		Architecture* ppc = new PowerpcArchitecture("ppc", BigEndian);
 		Architecture::Register(ppc);
 
+		Architecture* ppc_le = new PowerpcArchitecture("ppc_le", LittleEndian);
+		Architecture::Register(ppc_le);
+
 		/* calling conventions */
 		Ref<CallingConvention> conv;
 		conv = new PpcSvr4CallingConvention(ppc);
@@ -1748,11 +1755,22 @@ extern "C"
 		conv = new PpcLinuxSyscallCallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
 
+		conv = new PpcSvr4CallingConvention(ppc_le);
+		ppc_le->RegisterCallingConvention(conv);
+		ppc_le->SetDefaultCallingConvention(conv);
+		conv = new PpcLinuxSyscallCallingConvention(ppc_le);
+		ppc_le->RegisterCallingConvention(conv);
+
 		/* function recognizer */
 		ppc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 		ppc->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
 		ppc->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
 		ppc->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
+
+		ppc_le->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
+		ppc_le->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
+		ppc_le->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
+		ppc_le->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
 
 		/* call the STATIC RegisterArchitecture with "Mach-O"
 			which invokes the "Mach-O" INSTANCE of RegisterArchitecture,
@@ -1770,7 +1788,7 @@ extern "C"
 			"Mach-O", /* name of the binary view type */
 			MACHO_CPU_TYPE_POWERPC, /* id (key in m_arch map) */
 			LittleEndian,
-			ppc /* the architecture */
+			ppc_le /* the architecture */
 		);
 
 		/* for e_machine field in Elf32_Ehdr */
@@ -1789,7 +1807,7 @@ extern "C"
 			"ELF", /* name of the binary view type */
 			EM_PPC, /* id (key in m_arch map) */
 			LittleEndian,
-			ppc /* the architecture */
+			ppc_le /* the architecture */
 		);
 
 		return true;

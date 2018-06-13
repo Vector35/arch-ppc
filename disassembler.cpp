@@ -130,7 +130,7 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	res->handle = handle;
 	
 	/* call */
-	int n = cs_disasm(handle_big, data, size, addr, 1, &insn);
+	int n = cs_disasm(handle, data, size, addr, 1, &insn);
 	if(n != 1) {
 		MYLOG("ERROR: cs_disasm() returned %d (cs_errno:%d)\n", n, cs_errno(handle));
 		goto cleanup;

@@ -228,9 +228,13 @@ static bool LiftConditionalBranch(LowLevelILFunction& il, uint8_t bo, uint8_t bi
 }
 
 
-static bool LiftBranches(Architecture* arch, LowLevelILFunction &il, const uint8_t* data, uint64_t addr)
+static bool LiftBranches(Architecture* arch, LowLevelILFunction &il, const uint8_t* data, uint64_t addr, bool le)
 {
-	uint32_t insn = bswap32(*(const uint32_t *) data);
+	uint32_t insn = *(const uint32_t *) data;
+
+	if (!le)
+		insn = bswap32(insn);
+
 	bool lk = insn & 1;
 
 	switch (insn >> 26)
@@ -386,7 +390,7 @@ static bool LiftBranches(Architecture* arch, LowLevelILFunction &il, const uint8
 /* returns TRUE - if this IL continues
           FALSE - if this IL terminates a block */
 bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
-  const uint8_t* data, uint64_t addr, decomp_result *res)
+  const uint8_t* data, uint64_t addr, decomp_result *res, bool le)
 {
 	int i;
 	bool rc = true;
@@ -395,7 +399,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 	 * is too difficult to work with and is outright broken for some
 	 * branch instructions (bdnz, etc.)
 	 */
-	if (LiftBranches(arch, il, data, addr))
+	if (LiftBranches(arch, il, data, addr, le))
 		return true;
 
 	struct cs_insn *insn = &(res->insn);
