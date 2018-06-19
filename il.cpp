@@ -387,6 +387,63 @@ static bool LiftBranches(Architecture* arch, LowLevelILFunction &il, const uint8
 	return true;
 }
 
+
+static ExprId ByteReverseRegister(LowLevelILFunction &il, uint32_t reg, size_t size)
+{
+	ExprId swap = BN_INVALID_EXPR;
+
+	for (size_t srcIndex = 0; srcIndex < size; srcIndex++)
+	{
+		ExprId extracted = il.Register(4, reg);
+		size_t dstIndex = size - srcIndex - 1;
+
+		if (dstIndex > srcIndex)
+		{
+			ExprId mask = il.Const(4, 0xffull << (srcIndex * 8));
+			extracted = il.And(4, extracted, mask);
+			extracted = il.ShiftLeft(4, extracted, il.Const(4, (dstIndex - srcIndex) * 8));
+		}
+		else if (srcIndex > dstIndex)
+		{
+			ExprId mask = il.Const(4, 0xffull << (dstIndex * 8));
+			extracted = il.LogicalShiftRight(4, extracted, il.Const(4, (srcIndex - dstIndex) * 8));
+			extracted = il.And(4, extracted, mask);
+		}
+
+		if (swap == BN_INVALID_EXPR)
+			swap = extracted;
+		else
+			swap = il.Or(4, swap, extracted);
+	}
+
+	return swap;
+}
+
+
+static void ByteReversedLoad(LowLevelILFunction &il, struct cs_ppc* ppc, size_t size)
+{
+	ExprId addr = operToIL(il, &ppc->operands[1], OTI_GPR0_ZERO);                  // (rA|0)
+	ExprId  val = il.Load(size, il.Add(4, addr, operToIL(il, &ppc->operands[2]))); // [(rA|0) + (rB)]
+
+	if (size < 4)
+		val = il.ZeroExtend(4, val);
+
+	/* set reg immediately; this will cause xrefs to be sized correctly,
+	 * we'll use this as the scratch while we calculate the swapped value */
+	il.AddInstruction(il.SetRegister(4, ppc->operands[0].reg, val));               // rD = [(rA|0) + (rB)]
+	ExprId swap = ByteReverseRegister(il, ppc->operands[0].reg, size);
+
+	il.AddInstruction(il.SetRegister(4, ppc->operands[0].reg, swap));              // rD = swap([(rA|0) + (rB)])
+}
+
+static void ByteReversedStore(LowLevelILFunction &il, struct cs_ppc* ppc, size_t size)
+{
+	ExprId addr = operToIL(il, &ppc->operands[1], OTI_GPR0_ZERO);     // (rA|0)
+	addr = il.Add(4, addr, operToIL(il, &ppc->operands[2]));          // (rA|0) + (rB)
+	ExprId val = ByteReverseRegister(il, ppc->operands[0].reg, size); // rS = swap(rS)
+	il.AddInstruction(il.Store(size, addr, val));                     // [(rA|0) + (rB)] = swap(rS)
+}
+
 /* returns TRUE - if this IL continues
           FALSE - if this IL terminates a block */
 bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
@@ -640,6 +697,12 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 	//	il.AddInstruction(ei2);
 	//	break;
 
+		case PPC_INS_FCMPU:
+			REQUIRE3OPS
+			ei0 = il.FloatSub(4, il.Unimplemented(), il.Unimplemented(), (oper0->reg - PPC_REG_CR0) + IL_FLAGWRITE_INVL0);
+			il.AddInstruction(ei0);
+			break;
+
 		case PPC_INS_CRAND:
 		case PPC_INS_CRANDC:
 		case PPC_INS_CRNAND:
@@ -706,6 +769,18 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			ei0 = il.Unimplemented();
 			ei0 = il.SetRegister(4, oper0->reg, ei0);
 			il.AddInstruction(ei0);
+			break;
+
+		case PPC_INS_MTCRF:
+			REQUIRE2OPS
+			for (uint8_t test = 0x80, i = 0; test; test >>= 1, i++)
+			{
+				if (test & oper0->imm)
+				{
+					ei0 = il.Or(4, il.Register(4, oper1->reg), il.Const(4, 0), IL_FLAGWRITE_MTCR0 + i);
+					il.AddInstruction(ei0);
+				}
+			}
 			break;
 
 		case PPC_INS_EXTSB:
@@ -906,6 +981,26 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 				il.AddInstruction(ei0);
 			}
 
+			break;
+
+		case PPC_INS_LHBRX:
+			REQUIRE3OPS
+			ByteReversedLoad(il, ppc, 2);
+			break;
+
+		case PPC_INS_LWBRX:
+			REQUIRE3OPS
+			ByteReversedLoad(il, ppc, 4);
+			break;
+
+		case PPC_INS_STHBRX:
+			REQUIRE3OPS
+			ByteReversedStore(il, ppc, 2);
+			break;
+
+		case PPC_INS_STWBRX:
+			REQUIRE3OPS
+			ByteReversedStore(il, ppc, 4);
 			break;
 
 		case PPC_INS_MFCTR: // move from ctr
@@ -1633,7 +1728,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_FCFIDS:
 		case PPC_INS_FCFIDU:
 		case PPC_INS_FCFIDUS:
-		case PPC_INS_FCMPU:
 		case PPC_INS_FCPSGN:
 		case PPC_INS_FCTID:
 		case PPC_INS_FCTIDUZ:
@@ -1689,7 +1783,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_LFSU:
 		case PPC_INS_LFSUX:
 		case PPC_INS_LFSX:
-		case PPC_INS_LHBRX:
 		case PPC_INS_LSWI:
 		case PPC_INS_LVEBX:
 		case PPC_INS_LVEHX:
@@ -1702,7 +1795,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_LWARX:
 		case PPC_INS_LWAUX:
 		case PPC_INS_LWAX:
-		case PPC_INS_LWBRX:
 		case PPC_INS_LXSDX:
 		case PPC_INS_LXVD2X:
 		case PPC_INS_LXVDSX:
@@ -1719,7 +1811,6 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_MFTB:
 		case PPC_INS_MFVSCR:
 		case PPC_INS_MSYNC:
-		case PPC_INS_MTCRF:
 		case PPC_INS_MTDCR:
 		case PPC_INS_MTFSB0:
 		case PPC_INS_MTFSB1:
@@ -1769,14 +1860,12 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_STFSU:
 		case PPC_INS_STFSUX:
 		case PPC_INS_STFSX:
-		case PPC_INS_STHBRX:
 		case PPC_INS_STSWI:
 		case PPC_INS_STVEBX:
 		case PPC_INS_STVEHX:
 		case PPC_INS_STVEWX:
 		case PPC_INS_STVX:
 		case PPC_INS_STVXL:
-		case PPC_INS_STWBRX:
 		case PPC_INS_STWCX:
 		case PPC_INS_STXSDX:
 		case PPC_INS_STXVD2X:
