@@ -36,7 +36,8 @@ enum MachoPpcRelocationType
 	PPC_RELOC_HA16_SECTDIFF = 12,
 	PPC_RELOC_JBSR = 13,
 	PPC_RELOC_LO14_SECTDIFF = 14,
-	PPC_RELOC_LOCAL_SECTDIFF = 15
+	PPC_RELOC_LOCAL_SECTDIFF = 15,
+	MAX_MACHO_PPC_RELOCATION
 };
 
 enum ElfPpcRelocationType
@@ -107,8 +108,109 @@ enum ElfPpcRelocationType
 	R_PPC_GOT_DTPREL16_LO = 92, // half16*	(sym+add)@got@dtprel@l
 	R_PPC_GOT_DTPREL16_HI = 93, // half16*	(sym+add)@got@dtprel@h
 	R_PPC_GOT_DTPREL16_HA = 94, // half16*	(sym+add)@got@dtprel@ha
-	R_PPC_MAXRELOCATION   = 95,
+	MAX_ELF_PPC_RELOCATION
 };
+
+static const char* GetRelocationString(MachoPpcRelocationType relocType)
+{
+	static const char* relocTable[] =
+	{
+		"PPC_RELOC_VANILLA",
+		"PPC_RELOC_PAIR",
+		"PPC_RELOC_BR14",
+		"PPC_RELOC_BR24",
+		"PPC_RELOC_HI16",
+		"PPC_RELOC_LO16",
+		"PPC_RELOC_HA16",
+		"PPC_RELOC_LO14",
+		"PPC_RELOC_SECTDIFF",
+		"PPC_RELOC_PB_LA_PTR",
+		"PPC_RELOC_HI16_SECTDIFF",
+		"PPC_RELOC_LO16_SECTDIFF",
+		"PPC_RELOC_HA16_SECTDIFF",
+		"PPC_RELOC_JBSR",
+		"PPC_RELOC_LO14_SECTDIFF",
+		"PPC_RELOC_LOCAL_SECTDIFF"
+	};
+	if (relocType >= PPC_RELOC_VANILLA && relocType < MAX_MACHO_PPC_RELOCATION)
+		return relocTable[relocType];
+	return "Unknown PPC relocation";
+}
+static const char* GetRelocationString(ElfPpcRelocationType relocType)
+{
+	static const char* relocTable[] =
+	{
+		"R_PPC_NONE",
+		"R_PPC_ADDR32",
+		"R_PPC_ADDR24",
+		"R_PPC_ADDR16",
+		"R_PPC_ADDR16_LO",
+		"R_PPC_ADDR16_HI",
+		"R_PPC_ADDR16_HA",
+		"R_PPC_ADDR14",
+		"R_PPC_ADDR14_BRTAKEN",
+		"R_PPC_ADDR14_BRNTAKEN",
+		"R_PPC_REL24",
+		"R_PPC_REL14",
+		"R_PPC_REL14_BRTAKEN",
+		"R_PPC_REL14_BRNTAKEN",
+		"R_PPC_GOT16",
+		"R_PPC_GOT16_LO",
+		"R_PPC_GOT16_HI",
+		"R_PPC_GOT16_HA",
+		"R_PPC_PLTREL24",
+		"R_PPC_COPY",
+		"R_PPC_GLOB_DAT",
+		"R_PPC_JMP_SLOT",
+		"R_PPC_RELATIVE",
+		"R_PPC_LOCAL24PC",
+		"R_PPC_UADDR32",
+		"R_PPC_UADDR16",
+		"R_PPC_REL32",
+		"R_PPC_PLT32",
+		"R_PPC_PLTREL32",
+		"R_PPC_PLT16_LO",
+		"R_PPC_PLT16_HI",
+		"R_PPC_PLT16_HA",
+		"R_PPC_SDAREL16",
+		"R_PPC_SECTOFF",
+		"R_PPC_SECTOFF_LO",
+		"R_PPC_SECTOFF_HI",
+		"R_PPC_SECTOFF_HA",
+		"R_PPC_TLS",
+		"R_PPC_DTPMOD32",
+		"R_PPC_TPREL16",
+		"R_PPC_TPREL16_LO",
+		"R_PPC_TPREL16_HI",
+		"R_PPC_TPREL16_HA",
+		"R_PPC_TPREL32",
+		"R_PPC_DTPREL16",
+		"R_PPC_DTPREL16_LO",
+		"R_PPC_DTPREL16_HI",
+		"R_PPC_DTPREL16_HA",
+		"R_PPC_DTPREL32",
+		"R_PPC_GOT_TLSGD16",
+		"R_PPC_GOT_TLSGD16_LO",
+		"R_PPC_GOT_TLSGD16_HI",
+		"R_PPC_GOT_TLSGD16_HA",
+		"R_PPC_GOT_TLSLD16",
+		"R_PPC_GOT_TLSLD16_LO",
+		"R_PPC_GOT_TLSLD16_HI",
+		"R_PPC_GOT_TLSLD16_HA",
+		"R_PPC_GOT_TPREL16",
+		"R_PPC_GOT_TPREL16_LO",
+		"R_PPC_GOT_TPREL16_HI",
+		"R_PPC_GOT_TPREL16_HA",
+		"R_PPC_GOT_DTPREL16",
+		"R_PPC_GOT_DTPREL16_LO",
+		"R_PPC_GOT_DTPREL16_HI",
+		"R_PPC_GOT_DTPREL16_HA",
+		"R_PPC_MAXRELOCATION"
+	};
+	if (relocType > R_PPC_NONE && relocType < MAX_ELF_PPC_RELOCATION)
+		return relocTable[relocType];
+	return "Unknown PPC relocation";
+}
 
 /* class Architecture from binaryninjaapi.h */
 class PowerpcArchitecture: public Architecture
@@ -1829,10 +1931,6 @@ uint16_t bswap16(uint16_t x)
 class PpcElfRelocationHandler: public RelocationHandler
 {
 public:
-	PpcElfRelocationHandler()
-	{}
-
-
 	virtual bool ApplyRelocation(Ref<BinaryView> view, Ref<Architecture> arch, Ref<Relocation> reloc, uint8_t* dest, size_t len) override
 	{
 		(void)view;
@@ -1844,13 +1942,18 @@ public:
 		uint8_t* targetBytes = (uint8_t*)(&target);
 		switch (info.nativeType)
 		{
-		case R_PPC_ADDR16_LO: dest16[0] = bswap16(reloc->GetTarget() & 0xffff); break;
-		case R_PPC_ADDR16_HA: dest16[0] = bswap16((reloc->GetTarget() >> 16) & 0xffff); break;
+		case R_PPC_ADDR16_LO:
+			dest16[0] = bswap16(reloc->GetTarget() & 0xffff);
+			break;
+		case R_PPC_ADDR16_HA:
+			dest16[0] = bswap16((reloc->GetTarget() >> 16) & 0xffff);
+			break;
 		case R_PPC_REL24:
 			target = (target + (bswap32(dest32[0]) & 0xffffff) - reloc->GetReloc());
 			dest[1] = targetBytes[2];
 			dest[2] = targetBytes[1];
-			dest[3] = targetBytes[0]; break;
+			dest[3] = targetBytes[0];
+			break;
 		case R_PPC_JMP_SLOT:
 		case R_PPC_GLOB_DAT:
 		case R_PPC_COPY:
@@ -1870,7 +1973,6 @@ public:
 		return true;
 	}
 
-
 	virtual bool GetRelocationInfo(Ref<BinaryView> view, Ref<Architecture> arch, vector<BNRelocationInfo>& result) override
 	{
 		(void)view; (void)arch; (void)result;
@@ -1879,15 +1981,29 @@ public:
 			reloc.type = StandardRelocationType;
 			switch (reloc.nativeType)
 			{
+			case R_PPC_NONE: reloc.type = IgnoredRelocation; break;
 			case R_PPC_COPY: reloc.type = ELFCopyRelocationType; break;
 			case R_PPC_GLOB_DAT: reloc.type = ELFGlobalRelocationType; break;
 			case R_PPC_JMP_SLOT: reloc.type = ELFJumpSlotRelocationType; break;
+			default:
+				LogWarn("Unsupported relocation type: %s", (ElfPpcRelocationType)reloc.nativeType);
 			}
 		}
 		return true;
 	}
 };
 
+class PpcMachoRelocationHandler: public RelocationHandler
+{
+public:
+	virtual bool GetRelocationInfo(Ref<BinaryView> view, Ref<Architecture> arch, vector<BNRelocationInfo>& result) override
+	{
+		(void)view; (void)arch;
+		for (auto& reloc : result)
+			LogWarn("Unsupported relocation type: %s", (MachoPpcRelocationType)reloc.nativeType);
+		return false;
+	}
+};
 
 extern "C"
 {
@@ -1914,6 +2030,7 @@ extern "C"
 		ppc->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
 
 		ppc->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
+		ppc->RegisterRelocationHandler("Mach-O", new PpcMachoRelocationHandler());
 		/* call the STATIC RegisterArchitecture with "Mach-O"
 			which invokes the "Mach-O" INSTANCE of RegisterArchitecture,
 			supplied with CPU_TYPE_POWERPC from machoview.h */
