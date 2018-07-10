@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-
+#include <map>
 #include <vector>
 using namespace std;
 
@@ -108,6 +108,40 @@ enum ElfPpcRelocationType
 	R_PPC_GOT_DTPREL16_LO = 92, // half16*	(sym+add)@got@dtprel@l
 	R_PPC_GOT_DTPREL16_HI = 93, // half16*	(sym+add)@got@dtprel@h
 	R_PPC_GOT_DTPREL16_HA = 94, // half16*	(sym+add)@got@dtprel@ha
+
+	// Embedded ELF ABI, and are not in the SVR4 ELF ABI.
+	R_PPC_EMB_NADDR32       = 101,
+	R_PPC_EMB_NADDR16       = 102,
+	R_PPC_EMB_NADDR16_LO    = 103,
+	R_PPC_EMB_NADDR16_HI    = 104,
+	R_PPC_EMB_NADDR16_HA    = 105,
+	R_PPC_EMB_SDAI16        = 106,
+	R_PPC_EMB_SDA2I16       = 107,
+	R_PPC_EMB_SDA2REL       = 108,
+	R_PPC_EMB_SDA21         = 109,     // 16 bit offset in SDA
+	R_PPC_EMB_MRKREF        = 110,
+	R_PPC_EMB_RELSEC16      = 111,
+	R_PPC_EMB_RELST_LO      = 112,
+	R_PPC_EMB_RELST_HI      = 113,
+	R_PPC_EMB_RELST_HA      = 114,
+	R_PPC_EMB_BIT_FLD       = 115,
+	R_PPC_EMB_RELSDA        = 116,     // 16 bit relative offset in SDA
+	// Diab tool relocations.
+	R_PPC_DIAB_SDA21_LO     = 180,     // like EMB_SDA21, but lower 16 bit
+	R_PPC_DIAB_SDA21_HI     = 181,     // like EMB_SDA21, but high 16 bit
+	R_PPC_DIAB_SDA21_HA     = 182,     // like EMB_SDA21, adjusted high 16
+	R_PPC_DIAB_RELSDA_LO    = 183,     // like EMB_RELSDA, but lower 16 bit
+	R_PPC_DIAB_RELSDA_HI    = 184,     // like EMB_RELSDA, but high 16 bit
+	R_PPC_DIAB_RELSDA_HA    = 185,     // like EMB_RELSDA, adjusted high 16
+	// GNU extension to support local ifunc.
+	R_PPC_IRELATIVE         = 248,
+	// GNU relocs used in PIC code sequences.
+	R_PPC_REL16             = 249,     // half16   (sym+add-.)
+	R_PPC_REL16_LO          = 250,     // half16   (sym+add-.)@l
+	R_PPC_REL16_HI          = 251,     // half16   (sym+add-.)@h
+	R_PPC_REL16_HA          = 252,     // half16   (sym+add-.)@ha
+	// This is a phony reloc to handle any old fashioned TOC16 references that may still be in object files.
+	R_PPC_TOC16             = 255,
 	MAX_ELF_PPC_RELOCATION
 };
 
@@ -138,77 +172,103 @@ static const char* GetRelocationString(MachoPpcRelocationType relocType)
 }
 static const char* GetRelocationString(ElfPpcRelocationType relocType)
 {
-	static const char* relocTable[] =
-	{
-		"R_PPC_NONE",
-		"R_PPC_ADDR32",
-		"R_PPC_ADDR24",
-		"R_PPC_ADDR16",
-		"R_PPC_ADDR16_LO",
-		"R_PPC_ADDR16_HI",
-		"R_PPC_ADDR16_HA",
-		"R_PPC_ADDR14",
-		"R_PPC_ADDR14_BRTAKEN",
-		"R_PPC_ADDR14_BRNTAKEN",
-		"R_PPC_REL24",
-		"R_PPC_REL14",
-		"R_PPC_REL14_BRTAKEN",
-		"R_PPC_REL14_BRNTAKEN",
-		"R_PPC_GOT16",
-		"R_PPC_GOT16_LO",
-		"R_PPC_GOT16_HI",
-		"R_PPC_GOT16_HA",
-		"R_PPC_PLTREL24",
-		"R_PPC_COPY",
-		"R_PPC_GLOB_DAT",
-		"R_PPC_JMP_SLOT",
-		"R_PPC_RELATIVE",
-		"R_PPC_LOCAL24PC",
-		"R_PPC_UADDR32",
-		"R_PPC_UADDR16",
-		"R_PPC_REL32",
-		"R_PPC_PLT32",
-		"R_PPC_PLTREL32",
-		"R_PPC_PLT16_LO",
-		"R_PPC_PLT16_HI",
-		"R_PPC_PLT16_HA",
-		"R_PPC_SDAREL16",
-		"R_PPC_SECTOFF",
-		"R_PPC_SECTOFF_LO",
-		"R_PPC_SECTOFF_HI",
-		"R_PPC_SECTOFF_HA",
-		"R_PPC_TLS",
-		"R_PPC_DTPMOD32",
-		"R_PPC_TPREL16",
-		"R_PPC_TPREL16_LO",
-		"R_PPC_TPREL16_HI",
-		"R_PPC_TPREL16_HA",
-		"R_PPC_TPREL32",
-		"R_PPC_DTPREL16",
-		"R_PPC_DTPREL16_LO",
-		"R_PPC_DTPREL16_HI",
-		"R_PPC_DTPREL16_HA",
-		"R_PPC_DTPREL32",
-		"R_PPC_GOT_TLSGD16",
-		"R_PPC_GOT_TLSGD16_LO",
-		"R_PPC_GOT_TLSGD16_HI",
-		"R_PPC_GOT_TLSGD16_HA",
-		"R_PPC_GOT_TLSLD16",
-		"R_PPC_GOT_TLSLD16_LO",
-		"R_PPC_GOT_TLSLD16_HI",
-		"R_PPC_GOT_TLSLD16_HA",
-		"R_PPC_GOT_TPREL16",
-		"R_PPC_GOT_TPREL16_LO",
-		"R_PPC_GOT_TPREL16_HI",
-		"R_PPC_GOT_TPREL16_HA",
-		"R_PPC_GOT_DTPREL16",
-		"R_PPC_GOT_DTPREL16_LO",
-		"R_PPC_GOT_DTPREL16_HI",
-		"R_PPC_GOT_DTPREL16_HA",
-		"R_PPC_MAXRELOCATION"
+	static map<ElfPpcRelocationType, const char*> relocTable = {
+		{R_PPC_NONE, "R_PPC_NONE"},
+		{R_PPC_ADDR32, "R_PPC_ADDR32"},
+		{R_PPC_ADDR24, "R_PPC_ADDR24"},
+		{R_PPC_ADDR16, "R_PPC_ADDR16"},
+		{R_PPC_ADDR16_LO, "R_PPC_ADDR16_LO"},
+		{R_PPC_ADDR16_HI, "R_PPC_ADDR16_HI"},
+		{R_PPC_ADDR16_HA, "R_PPC_ADDR16_HA"},
+		{R_PPC_ADDR14, "R_PPC_ADDR14"},
+		{R_PPC_ADDR14_BRTAKEN, "R_PPC_ADDR14_BRTAKEN"},
+		{R_PPC_ADDR14_BRNTAKEN, "R_PPC_ADDR14_BRNTAKEN"},
+		{R_PPC_REL24, "R_PPC_REL24"},
+		{R_PPC_REL14, "R_PPC_REL14"},
+		{R_PPC_REL14_BRTAKEN, "R_PPC_REL14_BRTAKEN"},
+		{R_PPC_REL14_BRNTAKEN, "R_PPC_REL14_BRNTAKEN"},
+		{R_PPC_GOT16, "R_PPC_GOT16"},
+		{R_PPC_GOT16_LO, "R_PPC_GOT16_LO"},
+		{R_PPC_GOT16_HI, "R_PPC_GOT16_HI"},
+		{R_PPC_GOT16_HA, "R_PPC_GOT16_HA"},
+		{R_PPC_PLTREL24, "R_PPC_PLTREL24"},
+		{R_PPC_COPY, "R_PPC_COPY"},
+		{R_PPC_GLOB_DAT, "R_PPC_GLOB_DAT"},
+		{R_PPC_JMP_SLOT, "R_PPC_JMP_SLOT"},
+		{R_PPC_RELATIVE, "R_PPC_RELATIVE"},
+		{R_PPC_LOCAL24PC, "R_PPC_LOCAL24PC"},
+		{R_PPC_UADDR32, "R_PPC_UADDR32"},
+		{R_PPC_UADDR16, "R_PPC_UADDR16"},
+		{R_PPC_REL32, "R_PPC_REL32"},
+		{R_PPC_PLT32, "R_PPC_PLT32"},
+		{R_PPC_PLTREL32, "R_PPC_PLTREL32"},
+		{R_PPC_PLT16_LO, "R_PPC_PLT16_LO"},
+		{R_PPC_PLT16_HI, "R_PPC_PLT16_HI"},
+		{R_PPC_PLT16_HA, "R_PPC_PLT16_HA"},
+		{R_PPC_SDAREL16, "R_PPC_SDAREL16"},
+		{R_PPC_SECTOFF, "R_PPC_SECTOFF"},
+		{R_PPC_SECTOFF_LO, "R_PPC_SECTOFF_LO"},
+		{R_PPC_SECTOFF_HI, "R_PPC_SECTOFF_HI"},
+		{R_PPC_SECTOFF_HA, "R_PPC_SECTOFF_HA"},
+		{R_PPC_TLS, "R_PPC_TLS"},
+		{R_PPC_DTPMOD32, "R_PPC_DTPMOD32"},
+		{R_PPC_TPREL16, "R_PPC_TPREL16"},
+		{R_PPC_TPREL16_LO, "R_PPC_TPREL16_LO"},
+		{R_PPC_TPREL16_HI, "R_PPC_TPREL16_HI"},
+		{R_PPC_TPREL16_HA, "R_PPC_TPREL16_HA"},
+		{R_PPC_TPREL32, "R_PPC_TPREL32"},
+		{R_PPC_DTPREL16, "R_PPC_DTPREL16"},
+		{R_PPC_DTPREL16_LO, "R_PPC_DTPREL16_LO"},
+		{R_PPC_DTPREL16_HI, "R_PPC_DTPREL16_HI"},
+		{R_PPC_DTPREL16_HA, "R_PPC_DTPREL16_HA"},
+		{R_PPC_DTPREL32, "R_PPC_DTPREL32"},
+		{R_PPC_GOT_TLSGD16, "R_PPC_GOT_TLSGD16"},
+		{R_PPC_GOT_TLSGD16_LO, "R_PPC_GOT_TLSGD16_LO"},
+		{R_PPC_GOT_TLSGD16_HI, "R_PPC_GOT_TLSGD16_HI"},
+		{R_PPC_GOT_TLSGD16_HA, "R_PPC_GOT_TLSGD16_HA"},
+		{R_PPC_GOT_TLSLD16, "R_PPC_GOT_TLSLD16"},
+		{R_PPC_GOT_TLSLD16_LO, "R_PPC_GOT_TLSLD16_LO"},
+		{R_PPC_GOT_TLSLD16_HI, "R_PPC_GOT_TLSLD16_HI"},
+		{R_PPC_GOT_TLSLD16_HA, "R_PPC_GOT_TLSLD16_HA"},
+		{R_PPC_GOT_TPREL16, "R_PPC_GOT_TPREL16"},
+		{R_PPC_GOT_TPREL16_LO, "R_PPC_GOT_TPREL16_LO"},
+		{R_PPC_GOT_TPREL16_HI, "R_PPC_GOT_TPREL16_HI"},
+		{R_PPC_GOT_TPREL16_HA, "R_PPC_GOT_TPREL16_HA"},
+		{R_PPC_GOT_DTPREL16, "R_PPC_GOT_DTPREL16"},
+		{R_PPC_GOT_DTPREL16_LO, "R_PPC_GOT_DTPREL16_LO"},
+		{R_PPC_GOT_DTPREL16_HI, "R_PPC_GOT_DTPREL16_HI"},
+		{R_PPC_GOT_DTPREL16_HA, "R_PPC_GOT_DTPREL16_HA"},
+		{R_PPC_EMB_NADDR32, "R_PPC_EMB_NADDR32"},
+		{R_PPC_EMB_NADDR16, "R_PPC_EMB_NADDR16"},
+		{R_PPC_EMB_NADDR16_LO, "R_PPC_EMB_NADDR16_LO"},
+		{R_PPC_EMB_NADDR16_HI, "R_PPC_EMB_NADDR16_HI"},
+		{R_PPC_EMB_NADDR16_HA, "R_PPC_EMB_NADDR16_HA"},
+		{R_PPC_EMB_SDAI16, "R_PPC_EMB_SDAI16"},
+		{R_PPC_EMB_SDA2I16, "R_PPC_EMB_SDA2I16"},
+		{R_PPC_EMB_SDA2REL, "R_PPC_EMB_SDA2REL"},
+		{R_PPC_EMB_SDA21, "R_PPC_EMB_SDA21"},
+		{R_PPC_EMB_MRKREF, "R_PPC_EMB_MRKREF"},
+		{R_PPC_EMB_RELSEC16, "R_PPC_EMB_RELSEC16"},
+		{R_PPC_EMB_RELST_LO, "R_PPC_EMB_RELST_LO"},
+		{R_PPC_EMB_RELST_HI, "R_PPC_EMB_RELST_HI"},
+		{R_PPC_EMB_RELST_HA, "R_PPC_EMB_RELST_HA"},
+		{R_PPC_EMB_BIT_FLD, "R_PPC_EMB_BIT_FLD"},
+		{R_PPC_EMB_RELSDA, "R_PPC_EMB_RELSDA"},
+		{R_PPC_DIAB_SDA21_LO, "R_PPC_DIAB_SDA21_LO"},
+		{R_PPC_DIAB_SDA21_HI, "R_PPC_DIAB_SDA21_HI"},
+		{R_PPC_DIAB_SDA21_HA, "R_PPC_DIAB_SDA21_HA"},
+		{R_PPC_DIAB_RELSDA_LO, "R_PPC_DIAB_RELSDA_LO"},
+		{R_PPC_DIAB_RELSDA_HI, "R_PPC_DIAB_RELSDA_HI"},
+		{R_PPC_DIAB_RELSDA_HA, "R_PPC_DIAB_RELSDA_HA"},
+		{R_PPC_IRELATIVE, "R_PPC_IRELATIVE"},
+		{R_PPC_REL16, "R_PPC_REL16"},
+		{R_PPC_REL16_LO, "R_PPC_REL16_LO"},
+		{R_PPC_REL16_HI, "R_PPC_REL16_HI"},
+		{R_PPC_REL16_HA, "R_PPC_REL16_HA"},
+		{R_PPC_TOC16, "R_PPC_TOC16"}
 	};
-	if (relocType > R_PPC_NONE && relocType < MAX_ELF_PPC_RELOCATION)
-		return relocTable[relocType];
+	if (relocTable.count(relocType))
+		return relocTable.at(relocType);
 	return "Unknown PPC relocation";
 }
 
@@ -1979,6 +2039,7 @@ public:
 		for (auto& reloc : result)
 		{
 			reloc.type = StandardRelocationType;
+			reloc.size = 4;
 			switch (reloc.nativeType)
 			{
 			case R_PPC_NONE: reloc.type = IgnoredRelocation; break;
@@ -1986,7 +2047,7 @@ public:
 			case R_PPC_GLOB_DAT: reloc.type = ELFGlobalRelocationType; break;
 			case R_PPC_JMP_SLOT: reloc.type = ELFJumpSlotRelocationType; break;
 			default:
-				LogWarn("Unsupported relocation type: %s", (ElfPpcRelocationType)reloc.nativeType);
+				LogWarn("Unsupported relocation type: %s", GetRelocationString((ElfPpcRelocationType)reloc.nativeType));
 			}
 		}
 		return true;
@@ -2000,7 +2061,7 @@ public:
 	{
 		(void)view; (void)arch;
 		for (auto& reloc : result)
-			LogWarn("Unsupported relocation type: %s", (MachoPpcRelocationType)reloc.nativeType);
+			LogWarn("Unsupported relocation type: %s", GetRelocationString((MachoPpcRelocationType)reloc.nativeType));
 		return false;
 	}
 };
