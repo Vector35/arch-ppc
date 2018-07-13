@@ -356,7 +356,11 @@ class PowerpcArchitecture: public Architecture
 			return false;
 		}
 
-		uint32_t raw_insn = bswap32(*(const uint32_t *) data);
+		uint32_t raw_insn = *(const uint32_t *) data;
+
+		if (endian == BigEndian)
+			raw_insn = bswap32(raw_insn);
+
 		switch (raw_insn >> 26)
 		{
 			case 18: /* b (b, ba, bl, bla) */
@@ -585,7 +589,7 @@ class PowerpcArchitecture: public Architecture
 			goto cleanup;
 		}
 
-		rc = GetLowLevelILForPPCInstruction(this, il, data, addr, &res);
+		rc = GetLowLevelILForPPCInstruction(this, il, data, addr, &res, endian == LittleEndian);
 		len = 4;
 
 		cleanup:
@@ -611,6 +615,28 @@ class PowerpcArchitecture: public Architecture
 			case IL_FLAGWRITE_CR6_U:
 			case IL_FLAGWRITE_CR7_U:
 				signedWrite = false;
+				break;
+
+			case IL_FLAGWRITE_MTCR0:
+			case IL_FLAGWRITE_MTCR1:
+			case IL_FLAGWRITE_MTCR2:
+			case IL_FLAGWRITE_MTCR3:
+			case IL_FLAGWRITE_MTCR4:
+			case IL_FLAGWRITE_MTCR5:
+			case IL_FLAGWRITE_MTCR6:
+			case IL_FLAGWRITE_MTCR7:
+				return il.TestBit(4, il.GetExprForRegisterOrConstant(operands[0], 4), il.Const(4, 31u - flag));
+
+			case IL_FLAGWRITE_INVL0:
+			case IL_FLAGWRITE_INVL1:
+			case IL_FLAGWRITE_INVL2:
+			case IL_FLAGWRITE_INVL3:
+			case IL_FLAGWRITE_INVL4:
+			case IL_FLAGWRITE_INVL5:
+			case IL_FLAGWRITE_INVL6:
+			case IL_FLAGWRITE_INVL7:
+			case IL_FLAGWRITE_INVALL:
+				return il.Unimplemented();
 		}
 
 		auto liftOps = [&]() {
@@ -826,7 +852,15 @@ class PowerpcArchitecture: public Architecture
 			IL_FLAGWRITE_CR0_U, IL_FLAGWRITE_CR1_U, IL_FLAGWRITE_CR2_U, IL_FLAGWRITE_CR3_U,
 			IL_FLAGWRITE_CR4_U, IL_FLAGWRITE_CR5_U, IL_FLAGWRITE_CR6_U, IL_FLAGWRITE_CR7_U,
 
-			IL_FLAGWRITE_XER, IL_FLAGWRITE_XER_CA, IL_FLAGWRITE_XER_OV_SO
+			IL_FLAGWRITE_XER, IL_FLAGWRITE_XER_CA, IL_FLAGWRITE_XER_OV_SO,
+
+			IL_FLAGWRITE_MTCR0, IL_FLAGWRITE_MTCR1, IL_FLAGWRITE_MTCR2, IL_FLAGWRITE_MTCR3,
+			IL_FLAGWRITE_MTCR4, IL_FLAGWRITE_MTCR5, IL_FLAGWRITE_MTCR6, IL_FLAGWRITE_MTCR7,
+
+			IL_FLAGWRITE_INVL0, IL_FLAGWRITE_INVL1, IL_FLAGWRITE_INVL2, IL_FLAGWRITE_INVL3,
+			IL_FLAGWRITE_INVL4, IL_FLAGWRITE_INVL5, IL_FLAGWRITE_INVL6, IL_FLAGWRITE_INVL7,
+
+			IL_FLAGWRITE_INVALL
 		};
 	}
 
@@ -877,6 +911,43 @@ class PowerpcArchitecture: public Architecture
 			case IL_FLAGWRITE_XER_OV_SO:
 				return "xer_ov_so";
 
+			case IL_FLAGWRITE_MTCR0:
+				return "mtcr0";
+			case IL_FLAGWRITE_MTCR1:
+				return "mtcr1";
+			case IL_FLAGWRITE_MTCR2:
+				return "mtcr2";
+			case IL_FLAGWRITE_MTCR3:
+				return "mtcr3";
+			case IL_FLAGWRITE_MTCR4:
+				return "mtcr4";
+			case IL_FLAGWRITE_MTCR5:
+				return "mtcr5";
+			case IL_FLAGWRITE_MTCR6:
+				return "mtcr6";
+			case IL_FLAGWRITE_MTCR7:
+				return "mtcr7";
+
+			case IL_FLAGWRITE_INVL0:
+				return "invl0";
+			case IL_FLAGWRITE_INVL1:
+				return "invl1";
+			case IL_FLAGWRITE_INVL2:
+				return "invl2";
+			case IL_FLAGWRITE_INVL3:
+				return "invl3";
+			case IL_FLAGWRITE_INVL4:
+				return "invl4";
+			case IL_FLAGWRITE_INVL5:
+				return "invl5";
+			case IL_FLAGWRITE_INVL6:
+				return "invl6";
+			case IL_FLAGWRITE_INVL7:
+				return "invl7";
+
+			case IL_FLAGWRITE_INVALL:
+				return "invall";
+
 			default:
 				MYLOG("ERROR: unrecognized writeType\n");
 				return "none";
@@ -891,48 +962,64 @@ class PowerpcArchitecture: public Architecture
 		{
 			case IL_FLAGWRITE_CR0_S:
 			case IL_FLAGWRITE_CR0_U:
+			case IL_FLAGWRITE_MTCR0:
+			case IL_FLAGWRITE_INVL0:
 				return vector<uint32_t> {
 					IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
 				};
 
 			case IL_FLAGWRITE_CR1_S:
 			case IL_FLAGWRITE_CR1_U:
+			case IL_FLAGWRITE_MTCR1:
+			case IL_FLAGWRITE_INVL1:
 				return vector<uint32_t> {
 					IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1,
 				};
 
 			case IL_FLAGWRITE_CR2_S:
 			case IL_FLAGWRITE_CR2_U:
+			case IL_FLAGWRITE_MTCR2:
+			case IL_FLAGWRITE_INVL2:
 				return vector<uint32_t> {
 					IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
 				};
 
 			case IL_FLAGWRITE_CR3_S:
 			case IL_FLAGWRITE_CR3_U:
+			case IL_FLAGWRITE_MTCR3:
+			case IL_FLAGWRITE_INVL3:
 				return vector<uint32_t> {
 					IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
 				};
 
 			case IL_FLAGWRITE_CR4_S:
 			case IL_FLAGWRITE_CR4_U:
+			case IL_FLAGWRITE_MTCR4:
+			case IL_FLAGWRITE_INVL4:
 				return vector<uint32_t> {
 					IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4,
 				};
 
 			case IL_FLAGWRITE_CR5_S:
 			case IL_FLAGWRITE_CR5_U:
+			case IL_FLAGWRITE_MTCR5:
+			case IL_FLAGWRITE_INVL5:
 				return vector<uint32_t> {
 					IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
 				};
 
 			case IL_FLAGWRITE_CR6_S:
 			case IL_FLAGWRITE_CR6_U:
+			case IL_FLAGWRITE_MTCR6:
+			case IL_FLAGWRITE_INVL6:
 				return vector<uint32_t> {
 					IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
 				};
 			
 			case IL_FLAGWRITE_CR7_S:
 			case IL_FLAGWRITE_CR7_U:
+			case IL_FLAGWRITE_MTCR7:
+			case IL_FLAGWRITE_INVL7:
 				return vector<uint32_t> {
 					IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
 				};
@@ -951,6 +1038,9 @@ class PowerpcArchitecture: public Architecture
 				return vector<uint32_t> {
 					IL_FLAG_XER_SO, IL_FLAG_XER_OV
 				};
+
+			case IL_FLAGWRITE_INVALL:
+				return GetAllFlags();
 
 			default:
 				return vector<uint32_t>();
@@ -2076,6 +2166,9 @@ extern "C"
 		Architecture* ppc = new PowerpcArchitecture("ppc", BigEndian);
 		Architecture::Register(ppc);
 
+		Architecture* ppc_le = new PowerpcArchitecture("ppc_le", LittleEndian);
+		Architecture::Register(ppc_le);
+
 		/* calling conventions */
 		Ref<CallingConvention> conv;
 		conv = new PpcSvr4CallingConvention(ppc);
@@ -2084,14 +2177,25 @@ extern "C"
 		conv = new PpcLinuxSyscallCallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
 
+		conv = new PpcSvr4CallingConvention(ppc_le);
+		ppc_le->RegisterCallingConvention(conv);
+		ppc_le->SetDefaultCallingConvention(conv);
+		conv = new PpcLinuxSyscallCallingConvention(ppc_le);
+		ppc_le->RegisterCallingConvention(conv);
+
 		/* function recognizer */
 		ppc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 		ppc->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
 		ppc->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
 		ppc->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
 
-		ppc->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
-		ppc->RegisterRelocationHandler("Mach-O", new PpcMachoRelocationHandler());
+		ppc_le->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
+		ppc_le->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
+		ppc_le->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
+		ppc_le->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
+
+		ppc_le->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
+		ppc_le->RegisterRelocationHandler("Mach-O", new PpcMachoRelocationHandler());
 		/* call the STATIC RegisterArchitecture with "Mach-O"
 			which invokes the "Mach-O" INSTANCE of RegisterArchitecture,
 			supplied with CPU_TYPE_POWERPC from machoview.h */
@@ -2108,7 +2212,7 @@ extern "C"
 			"Mach-O", /* name of the binary view type */
 			MACHO_CPU_TYPE_POWERPC, /* id (key in m_arch map) */
 			LittleEndian,
-			ppc /* the architecture */
+			ppc_le /* the architecture */
 		);
 
 		/* for e_machine field in Elf32_Ehdr */
@@ -2127,7 +2231,7 @@ extern "C"
 			"ELF", /* name of the binary view type */
 			EM_PPC, /* id (key in m_arch map) */
 			LittleEndian,
-			ppc /* the architecture */
+			ppc_le /* the architecture */
 		);
 
 		return true;
