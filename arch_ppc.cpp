@@ -2194,6 +2194,7 @@ extern "C"
 		ppc_le->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
 		ppc_le->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
 
+		ppc->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_le->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_le->RegisterRelocationHandler("Mach-O", new PpcMachoRelocationHandler());
 		/* call the STATIC RegisterArchitecture with "Mach-O"
