@@ -1690,9 +1690,9 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 		// JUMP
 		//
 		tmp = il->GetInstruction(3);
-		if(tmp.operation != LLIL_JUMP)
+		if((tmp.operation != LLIL_JUMP) && (tmp.operation != LLIL_TAILCALL))
 			return false;
-		tmp = tmp.GetDestExpr<LLIL_JUMP>();
+		tmp = (tmp.operation == LLIL_JUMP) ? tmp.GetDestExpr<LLIL_JUMP>() : tmp.GetDestExpr<LLIL_TAILCALL>();
 		if(tmp.operation != LLIL_REG)
 			return false;
 		if(tmp.GetSourceRegister<LLIL_REG>() != regJump)
