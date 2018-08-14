@@ -1874,7 +1874,8 @@ class PpcImportedFunctionRecognizer: public FunctionRecognizer
 			return false;
 		/* get the constant, address of GOT */
 		tmp = lis.GetSourceExpr<LLIL_SET_REG>();
-		if ((tmp.operation != LLIL_CONST) && (tmp.operation != LLIL_CONST_PTR))
+		if ((tmp.operation != LLIL_CONST) && (tmp.operation != LLIL_CONST_PTR) &&
+			(tmp.operation != LLIL_RELOC_PTR))
 			return false;
 		constGotBase = tmp.GetConstant();
 		/* get the destination register, is assigned the address of GOT */
