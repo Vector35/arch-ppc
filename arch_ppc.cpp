@@ -2098,7 +2098,7 @@ public:
 			dest16[0] = bswap16((reloc->GetTarget() >> 16) & 0xffff);
 			break;
 		case R_PPC_REL24:
-			target = (target + (bswap32(dest32[0]) & 0xffffff) - reloc->GetReloc());
+			target = (target + (bswap32(dest32[0]) & 0xffffff) - reloc->GetAddress());
 			dest[1] = targetBytes[2];
 			dest[2] = targetBytes[1];
 			dest[3] = targetBytes[0];
@@ -2114,7 +2114,7 @@ public:
 		// 	dest32[0] = bswap32(target + dest32[0]);
 		// 	break;
 		// case R_PPC_ADDR24:
-		// 	target = (target + (bswap32(dest32[0]) & 0xffffff) - reloc->GetReloc());
+		// 	target = (target + (bswap32(dest32[0]) & 0xffffff) - reloc->GetAddress());
 		// 	dest[1] = targetBytes[2];
 		// 	dest[2] = targetBytes[1];
 		// 	dest[3] = targetBytes[0]; break;
