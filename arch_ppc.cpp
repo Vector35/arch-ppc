@@ -170,6 +170,9 @@ static const char* GetRelocationString(MachoPpcRelocationType relocType)
 		return relocTable[relocType];
 	return "Unknown PPC relocation";
 }
+
+#define HA(x) ((((x) >> 16) + (((x) & 0x8000) ? 1 : 0)) & 0xffff)
+
 static const char* GetRelocationString(ElfPpcRelocationType relocType)
 {
 	static map<ElfPpcRelocationType, const char*> relocTable = {
@@ -2087,37 +2090,52 @@ public:
 		uint32_t* dest32 = (uint32_t*)dest;
 		uint16_t* dest16 = (uint16_t*)dest;
 		auto swap = [&arch](uint32_t x) { return (arch->GetEndianness() == LittleEndian)? x : bswap32(x); };
+		auto swap16 = [&arch](uint32_t x) { return (arch->GetEndianness() == LittleEndian)? x : bswap16(x); };
 		uint64_t target = reloc->GetTarget();
 		uint8_t* targetBytes = (uint8_t*)(&target);
 		switch (info.nativeType)
 		{
 		case R_PPC_ADDR16_LO:
-			dest16[0] = bswap16(reloc->GetTarget() & 0xffff);
+			dest16[0] = swap16((target + info.addend) & 0xffff);
 			break;
 		case R_PPC_ADDR16_HA:
-			dest16[0] = bswap16((reloc->GetTarget() >> 16) & 0xffff);
+			dest16[0] = swap16((target + info.addend) >> 16);
 			break;
 		case R_PPC_REL24:
-			target = (target + (bswap32(dest32[0]) & 0xffffff) - reloc->GetAddress());
-			dest[1] = targetBytes[2];
-			dest[2] = targetBytes[1];
-			dest[3] = targetBytes[0];
+			dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
+				((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
+			break;
+		case R_PPC_REL16_HA:
+			dest16[0] = swap16(HA(target - reloc->GetAddress() + info.addend));
+			break;
+		case R_PPC_REL16_HI:
+			dest16[0] = swap16((target - reloc->GetAddress()+ info.addend) >> 16);
+			break;
+		case R_PPC_REL16_LO:
+			dest16[0] = swap16((target - reloc->GetAddress()+ info.addend) & 0xffff);
 			break;
 		case R_PPC_JMP_SLOT:
 		case R_PPC_GLOB_DAT:
 		case R_PPC_COPY:
-			dest32[0] = bswap32(target);
+			dest32[0] = swap(target);
 			break;
-
-		// TODO: Need to test these before enabling them
-		// case R_PPC_ADDR32:
-		// 	dest32[0] = bswap32(target + dest32[0]);
-		// 	break;
-		// case R_PPC_ADDR24:
-		// 	target = (target + (bswap32(dest32[0]) & 0xffffff) - reloc->GetAddress());
-		// 	dest[1] = targetBytes[2];
-		// 	dest[2] = targetBytes[1];
-		// 	dest[3] = targetBytes[0]; break;
+		case R_PPC_PLTREL24:
+			dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
+				((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
+			break;
+		case R_PPC_LOCAL24PC:
+			dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
+				((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
+			break;
+		case R_PPC_ADDR32:
+			dest32[0] = swap(target + info.addend);
+			break;
+		case R_PPC_RELATIVE:
+			dest32[0] = swap(info.base);
+			break;
+		case R_PPC_REL32:
+			dest32[0] = swap(target - reloc->GetAddress() + info.addend);
+			break;
 		}
 		return true;
 	}
@@ -2125,21 +2143,83 @@ public:
 	virtual bool GetRelocationInfo(Ref<BinaryView> view, Ref<Architecture> arch, vector<BNRelocationInfo>& result) override
 	{
 		(void)view; (void)arch; (void)result;
+		set<uint32_t> relocTypes;
 		for (auto& reloc : result)
 		{
 			reloc.type = StandardRelocationType;
 			reloc.size = 4;
+			reloc.pcRelative = false;
+			reloc.dataRelocation = false;
 			switch (reloc.nativeType)
 			{
-			case R_PPC_NONE: reloc.type = IgnoredRelocation; break;
-			case R_PPC_COPY: reloc.type = ELFCopyRelocationType; break;
-			case R_PPC_GLOB_DAT: reloc.type = ELFGlobalRelocationType; break;
-			case R_PPC_JMP_SLOT: reloc.type = ELFJumpSlotRelocationType; break;
+			case R_PPC_NONE:
+				reloc.type = IgnoredRelocation;
+				break;
+			case R_PPC_COPY:
+				reloc.type = ELFCopyRelocationType;
+				break;
+			case R_PPC_GLOB_DAT:
+				reloc.type = ELFGlobalRelocationType;
+				break;
+			case R_PPC_JMP_SLOT:
+				reloc.type = ELFJumpSlotRelocationType;
+				break;
+			case R_PPC_ADDR16_HA:
+			case R_PPC_ADDR16_LO:
+				reloc.size = 2;
+				break;
+			case R_PPC_REL16_HA:
+			case R_PPC_REL16_HI:
+			case R_PPC_REL16_LO:
+				reloc.size = 2;
+				reloc.pcRelative = true;
+				break;
+			case R_PPC_PLTREL24:
+				reloc.pcRelative = true;
+				break;
+			case R_PPC_ADDR32:
+				reloc.dataRelocation = true;
+				break;
+			case R_PPC_RELATIVE:
+				reloc.dataRelocation = true;
+				reloc.baseRelative = true;
+				reloc.base += reloc.addend;
+				break;
+			case R_PPC_REL32:
+				reloc.pcRelative = true;
+				break;
+			case R_PPC_LOCAL24PC:
+				reloc.pcRelative = true;
+				break;
 			default:
-				LogWarn("Unsupported relocation type: %s", GetRelocationString((ElfPpcRelocationType)reloc.nativeType));
+				reloc.type = IgnoredRelocation;
+				relocTypes.insert(reloc.nativeType);
+				break;
 			}
 		}
+		for (auto& reloc : relocTypes)
+			LogWarn("Unsupported relocation type: %s", GetRelocationString((ElfPpcRelocationType)reloc));
 		return true;
+	}
+
+	virtual size_t GetOperandForExternalRelocation(const uint8_t* data, uint64_t addr, size_t length,
+		Ref<LowLevelILFunction> il, Ref<Relocation> relocation) override
+	{
+		(void)data;
+		(void)addr;
+		(void)length;
+		(void)il;
+		(void)relocation;
+		auto info = relocation->GetInfo();
+		switch (info.nativeType)
+		{
+		case R_PPC_ADDR16_HA:
+		case R_PPC_REL16_HA:
+		case R_PPC_REL16_HI:
+			return BN_NOCOERCE_EXTERN_PTR;
+		default:
+			return BN_AUTOCOERCE_EXTERN_PTR;
+		}
 	}
 };
 
