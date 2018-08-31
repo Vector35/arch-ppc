@@ -2086,13 +2086,13 @@ public:
 	virtual bool ApplyRelocation(Ref<BinaryView> view, Ref<Architecture> arch, Ref<Relocation> reloc, uint8_t* dest, size_t len) override
 	{
 		(void)view;
+		(void)len;
 		auto info = reloc->GetInfo();
 		uint32_t* dest32 = (uint32_t*)dest;
 		uint16_t* dest16 = (uint16_t*)dest;
 		auto swap = [&arch](uint32_t x) { return (arch->GetEndianness() == LittleEndian)? x : bswap32(x); };
 		auto swap16 = [&arch](uint32_t x) { return (arch->GetEndianness() == LittleEndian)? x : bswap16(x); };
 		uint64_t target = reloc->GetTarget();
-		uint8_t* targetBytes = (uint8_t*)(&target);
 		switch (info.nativeType)
 		{
 		case R_PPC_ADDR16_LO:
@@ -2198,7 +2198,7 @@ public:
 			}
 		}
 		for (auto& reloc : relocTypes)
-			LogWarn("Unsupported relocation type: %s", GetRelocationString((ElfPpcRelocationType)reloc));
+			LogWarn("Unsupported ELF relocation type: %s", GetRelocationString((ElfPpcRelocationType)reloc));
 		return true;
 	}
 
@@ -2209,7 +2209,6 @@ public:
 		(void)addr;
 		(void)length;
 		(void)il;
-		(void)relocation;
 		auto info = relocation->GetInfo();
 		switch (info.nativeType)
 		{
@@ -2229,8 +2228,14 @@ public:
 	virtual bool GetRelocationInfo(Ref<BinaryView> view, Ref<Architecture> arch, vector<BNRelocationInfo>& result) override
 	{
 		(void)view; (void)arch;
+		set<uint32_t> relocTypes;
 		for (auto& reloc : result)
-			LogWarn("Unsupported relocation type: %s", GetRelocationString((MachoPpcRelocationType)reloc.nativeType));
+		{
+			reloc.type = IgnoredRelocation;
+			relocTypes.insert(reloc.nativeType);
+		}
+		for (auto& reloc : relocTypes)
+			LogWarn("Unsupported Mach-O relocation type: %s", GetRelocationString((MachoPpcRelocationType)reloc));
 		return false;
 	}
 };
