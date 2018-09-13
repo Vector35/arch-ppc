@@ -1779,6 +1779,18 @@ public:
 	}
 
 
+	virtual vector<uint32_t> GetCalleeSavedRegisters() override
+	{
+		return vector<uint32_t>{
+			PPC_REG_R14, PPC_REG_R15, PPC_REG_R16, PPC_REG_R17,
+			PPC_REG_R18, PPC_REG_R19, PPC_REG_R20, PPC_REG_R21,
+			PPC_REG_R22, PPC_REG_R23, PPC_REG_R24, PPC_REG_R25,
+			PPC_REG_R26, PPC_REG_R27, PPC_REG_R28, PPC_REG_R29,
+			PPC_REG_R30, PPC_REG_R31
+		};
+	}
+
+
 	virtual uint32_t GetIntegerReturnValueRegister() override
 	{
 		return PPC_REG_R3;
@@ -1811,6 +1823,17 @@ public:
 	{
 		return vector<uint32_t>{
 			PPC_REG_R3
+		};
+	}
+
+	virtual vector<uint32_t> GetCalleeSavedRegisters() override
+	{
+		return vector<uint32_t>{
+			PPC_REG_R14, PPC_REG_R15, PPC_REG_R16, PPC_REG_R17,
+			PPC_REG_R18, PPC_REG_R19, PPC_REG_R20, PPC_REG_R21,
+			PPC_REG_R22, PPC_REG_R23, PPC_REG_R24, PPC_REG_R25,
+			PPC_REG_R26, PPC_REG_R27, PPC_REG_R28, PPC_REG_R29,
+			PPC_REG_R30, PPC_REG_R31
 		};
 	}
 
