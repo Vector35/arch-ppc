@@ -6,6 +6,7 @@
 
 void printOperandVerbose(decomp_result *res, cs_ppc_op *op)
 {
+	(void)res;
 	if(op == NULL) {
 		MYLOG("NULL\n");
 		return;
@@ -40,6 +41,7 @@ void printInstructionVerbose(decomp_result *res)
 	struct cs_insn *insn = &(res->insn);
 	struct cs_detail *detail = &(res->detail);
 	struct cs_ppc *ppc = &(detail->ppc);
+	(void)insn;
 
 	/* LEVEL1: id, address, size, bytes, mnemonic, op_str */
 	MYLOG("instruction id: %d \"%s %s\"\n", insn->id, insn->mnemonic, 
@@ -62,6 +64,7 @@ void printInstructionVerbose(decomp_result *res)
 	MYLOG("  groups:");
 	for(int j=0; j<detail->groups_count; ++j) {
 		int group = detail->groups[j];
+		(void)group;
 		MYLOG(" %d(%s)", group, cs_group_name(res->handle, group));
 	}
 	MYLOG("\n");
