@@ -1366,6 +1366,13 @@ class PowerpcArchitecture: public Architecture
 		return result;
 	}
 
+
+	virtual std::vector<uint32_t> GetGlobalRegisters() override
+	{
+		return vector<uint32_t>{ PPC_REG_R2, PPC_REG_R13 };
+	}
+
+
 	/* binja asks us about subregisters
 		the full width reg is the enveloping register, if it exists,
 		and also we report our offset within it (0 if we are not enveloped)
@@ -2043,6 +2050,12 @@ public:
 			PPC_REG_R26, PPC_REG_R27, PPC_REG_R28, PPC_REG_R29,
 			PPC_REG_R30, PPC_REG_R31
 		};
+	}
+
+
+	virtual uint32_t GetGlobalPointerRegister() override
+	{
+		return PPC_REG_R13;
 	}
 
 
