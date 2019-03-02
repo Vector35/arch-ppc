@@ -7,8 +7,8 @@ architecture plugin picture.
 
 #include <string.h> // strcpy, etc.
 
-#include <binaryninjaapi.h>
 #define MYLOG(...) while(0);
+//#define MYLOG printf
 //#define MYLOG BinaryNinja::LogDebug
 
 #include "disassembler.h"
@@ -67,8 +67,8 @@ powerpc_release(void)
 	}
 }
 
-extern "C" int 
-powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end, 
+extern "C" int
+powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	struct decomp_result *res)
 {
 	int rc = -1;
@@ -120,7 +120,7 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	// } cs_ppc_op;
 
 	csh handle;
-	cs_insn *insn = 0; /* instruction information 
+	cs_insn *insn = 0; /* instruction information
 					cs_disasm() will allocate array of cs_insn here */
 
 	/* which handle to use?
@@ -128,7 +128,7 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	handle = handle_big;
 	if(lil_end) handle = handle_lil;
 	res->handle = handle;
-	
+
 	/* call */
 	int n = cs_disasm(handle, data, size, addr, 1, &insn);
 	if(n != 1) {
@@ -152,7 +152,7 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	return rc;
 }
 
-extern "C" int 
+extern "C" int
 powerpc_disassemble(struct decomp_result *res, char *buf, size_t len)
 {
 	/* ideally the "heavy" string disassemble result is derived from light data

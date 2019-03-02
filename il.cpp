@@ -483,7 +483,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 
 	/* for conditionals that specify a crx, treat it special */
 	if(ppc->bc != PPC_BC_INVALID) {
-		if(oper0 && oper0->type == PPC_OP_REG && oper0->reg >= PPC_REG_CR0 && 
+		if(oper0 && oper0->type == PPC_OP_REG && oper0->reg >= PPC_REG_CR0 &&
 		  ppc->operands[0].reg <= PPC_REG_CR7) {
 			oper0 = oper1;
 			oper1 = oper2;
@@ -497,7 +497,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			__func__, addr, data[0], data[1], data[2], data[3],
 			insn->mnemonic, insn->op_str, ppc->op_count
 		);
-		
+
 		//printInstructionVerbose(res);
 		//MYLOG("oper0: %p\n", oper0);
 		//MYLOG("oper1: %p\n", oper1);
@@ -522,12 +522,12 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			);
 			il.AddInstruction(ei0);
 			break;
-			
+
 		case PPC_INS_ADDE: /* add, extended (+ carry flag) */
 			REQUIRE3OPS
 			ei0 = il.AddCarry(
-				4, 
-				operToIL(il, oper1), 
+				4,
+				operToIL(il, oper1),
 				operToIL(il, oper2),
 				il.Flag(IL_FLAG_XER_CA),
 				IL_FLAGWRITE_XER_CA
@@ -546,8 +546,8 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			else
 				ei0 = il.Const(4, 0);
 			ei0 = il.AddCarry(
-				4, 
-				operToIL(il, oper1), 
+				4,
+				operToIL(il, oper1),
 				ei0,
 				il.Flag(IL_FLAG_XER_CA),
 				IL_FLAGWRITE_XER_CA
@@ -562,8 +562,8 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_ADDIC: /* add immediate, carrying */
 			REQUIRE3OPS
 			ei0 = il.Add(
-				4, 
-				operToIL(il, oper1), 
+				4,
+				operToIL(il, oper1),
 				operToIL(il, oper2),
 				IL_FLAGWRITE_XER_CA
 			);
@@ -572,7 +572,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			);
 			il.AddInstruction(ei0);
 			break;
-	
+
 		case PPC_INS_ADDI: /* add immediate, eg: addi rD, rA, <imm> */
 		case PPC_INS_ADDIS: /* add immediate, shifted */
 			REQUIRE2OPS
@@ -592,8 +592,8 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_LIS: /* load immediate, shifted */
 			REQUIRE2OPS
 			ei0 = il.SetRegister(
-				4, 
-				oper0->reg, 
+				4,
+				oper0->reg,
 				il.ConstPointer(4, oper1->imm << 16)
 			);
 			il.AddInstruction(ei0);
@@ -1094,9 +1094,9 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			else
 				ei0 = il.Const(4, oper2->imm);
 			ei0 = il.SetRegister(
-				4, 
+				4,
 				oper0->reg,
-				il.Xor(4, 
+				il.Xor(4,
 					operToIL(il, oper1),
 					ei0
 				)
@@ -1123,8 +1123,8 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_SUBFE:
 			REQUIRE3OPS
 			ei0 = il.SubBorrow(
-				4, 
-				operToIL(il, oper2), 
+				4,
+				operToIL(il, oper2),
 				operToIL(il, oper1),
 				il.Flag(IL_FLAG_XER_CA),
 				IL_FLAGWRITE_XER_CA
@@ -1143,9 +1143,9 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			else
 				ei0 = il.Const(4, 0);
 			ei0 = il.AddCarry(
-				4, 
+				4,
 				ei0,
-				operToIL(il, oper1), 
+				operToIL(il, oper1),
 				il.Flag(IL_FLAG_XER_CA),
 				IL_FLAGWRITE_XER_CA
 			);
@@ -1174,114 +1174,114 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 		case PPC_INS_STB:
 		case PPC_INS_STBU: /* store(size, addr, val) */
 			REQUIRE2OPS
-			ei0 = il.Store(1, 
-				operToIL(il, oper1, OTI_GPR0_ZERO), 
+			ei0 = il.Store(1,
+				operToIL(il, oper1, OTI_GPR0_ZERO),
 				il.LowPart(1, operToIL(il, oper0))
 			);
 			il.AddInstruction(ei0);
 
-			// if update, then rA gets updated address 
+			// if update, then rA gets updated address
 			if(insn->id == PPC_INS_STBU) {
 				ei0 = il.SetRegister(4, oper1->mem.base, operToIL(il, oper1));
 				il.AddInstruction(ei0);
 			}
-			
+
 			break;
 
 		/* store half word indexed [with update] */
 		case PPC_INS_STBX:
 		case PPC_INS_STBUX: /* store(size, addr, val) */
 			REQUIRE3OPS
-			ei0 = il.Store(1, 
-				il.Add(4, operToIL(il, oper1, OTI_GPR0_ZERO), operToIL(il, oper2)), 
+			ei0 = il.Store(1,
+				il.Add(4, operToIL(il, oper1, OTI_GPR0_ZERO), operToIL(il, oper2)),
 				il.LowPart(1, operToIL(il, oper0))
 			);
 			il.AddInstruction(ei0);
 
-			// if update, then rA gets updated address 
+			// if update, then rA gets updated address
 			if(insn->id == PPC_INS_STBUX) {
 				ei0 = il.SetRegister(4, oper1->reg,
 					il.Add(4, operToIL(il, oper1), operToIL(il, oper2))
 				);
 				il.AddInstruction(ei0);
 			}
-			
+
 			break;
 
 		/* store half word [with update] */
 		case PPC_INS_STH:
 		case PPC_INS_STHU: /* store(size, addr, val) */
 			REQUIRE2OPS
-			ei0 = il.Store(2, 
-				operToIL(il, oper1, OTI_GPR0_ZERO), 
+			ei0 = il.Store(2,
+				operToIL(il, oper1, OTI_GPR0_ZERO),
 				il.LowPart(2, operToIL(il, oper0))
 			);
 			il.AddInstruction(ei0);
 
-			// if update, then rA gets updated address 
+			// if update, then rA gets updated address
 			if(insn->id == PPC_INS_STHU) {
 				ei0 = il.SetRegister(4, oper1->mem.base, operToIL(il, oper1));
 				il.AddInstruction(ei0);
 			}
-			
+
 			break;
 
 		/* store half word indexed [with update] */
 		case PPC_INS_STHX:
 		case PPC_INS_STHUX: /* store(size, addr, val) */
 			REQUIRE3OPS
-			ei0 = il.Store(2, 
-				il.Add(4, operToIL(il, oper1, OTI_GPR0_ZERO), operToIL(il, oper2)), 
+			ei0 = il.Store(2,
+				il.Add(4, operToIL(il, oper1, OTI_GPR0_ZERO), operToIL(il, oper2)),
 				il.LowPart(2, operToIL(il, oper0))
 			);
 			il.AddInstruction(ei0);
 
-			// if update, then rA gets updated address 
+			// if update, then rA gets updated address
 			if(insn->id == PPC_INS_STHUX) {
 				ei0 = il.SetRegister(4, oper1->reg,
 					il.Add(4, operToIL(il, oper1), operToIL(il, oper2))
 				);
 				il.AddInstruction(ei0);
 			}
-			
+
 			break;
 
 		/* store word [with update] */
 		case PPC_INS_STW:
 		case PPC_INS_STWU: /* store(size, addr, val) */
 			REQUIRE2OPS
-			ei0 = il.Store(4, 
-				operToIL(il, oper1, OTI_GPR0_ZERO), 
+			ei0 = il.Store(4,
+				operToIL(il, oper1, OTI_GPR0_ZERO),
 				operToIL(il, oper0)
 			);
 			il.AddInstruction(ei0);
 
-			// if update, then rA gets updated address 
+			// if update, then rA gets updated address
 			if(insn->id == PPC_INS_STWU) {
 				ei0 = il.SetRegister(4, oper1->mem.base, operToIL(il, oper1));
 				il.AddInstruction(ei0);
 			}
-			
+
 			break;
 
 		/* store word indexed [with update] */
 		case PPC_INS_STWX:
 		case PPC_INS_STWUX: /* store(size, addr, val) */
 			REQUIRE3OPS
-			ei0 = il.Store(4, 
-				il.Add(4, operToIL(il, oper1, OTI_GPR0_ZERO), operToIL(il, oper2)), 
+			ei0 = il.Store(4,
+				il.Add(4, operToIL(il, oper1, OTI_GPR0_ZERO), operToIL(il, oper2)),
 				operToIL(il, oper0)
 			);
 			il.AddInstruction(ei0);
 
-			// if update, then rA gets updated address 
+			// if update, then rA gets updated address
 			if(insn->id == PPC_INS_STWUX) {
 				ei0 = il.SetRegister(4, oper1->reg,
 					il.Add(4, operToIL(il, oper1), operToIL(il, oper2))
 				);
 				il.AddInstruction(ei0);
 			}
-			
+
 			break;
 
 		case PPC_INS_RLWIMI:
@@ -2319,11 +2319,11 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 
 		ReturnUnimpl:
 		default:
-			MYLOG("%s:%s() returning Unimplemented(...) on:\n", 
+			MYLOG("%s:%s() returning Unimplemented(...) on:\n",
 			  __FILE__, __func__);
 
 			MYLOG("    %08llx: %02X %02X %02X %02X %s %s\n",
-			  addr, data[0], data[1], data[2], data[3],  
+			  addr, data[0], data[1], data[2], data[3],
 			  res->insn.mnemonic, res->insn.op_str);
 
 			il.AddInstruction(il.Unimplemented());

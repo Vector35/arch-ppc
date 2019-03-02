@@ -27,13 +27,13 @@ void printOperandVerbose(decomp_result *res, cs_ppc_op *op)
 				op->mem.disp);
 			break;
 		case PPC_OP_CRX:
-			MYLOG("crx (scale:%d, reg:%s)\n", op->crx.scale, 
+			MYLOG("crx (scale:%d, reg:%s)\n", op->crx.scale,
 				cs_reg_name(res->handle, op->crx.reg));
 			break;
 		default:
 			MYLOG("unknown (%d)\n", op->type);
 			break;
-	}	
+	}
 }
 
 void printInstructionVerbose(decomp_result *res)
@@ -44,7 +44,7 @@ void printInstructionVerbose(decomp_result *res)
 	(void)insn;
 
 	/* LEVEL1: id, address, size, bytes, mnemonic, op_str */
-	MYLOG("instruction id: %d \"%s %s\"\n", insn->id, insn->mnemonic, 
+	MYLOG("instruction id: %d \"%s %s\"\n", insn->id, insn->mnemonic,
 	  insn->op_str);
 
 	MYLOG("  bytes: %02X %02X %02X %02X\n", insn->bytes[0], insn->bytes[1],
@@ -68,7 +68,7 @@ void printInstructionVerbose(decomp_result *res)
 		MYLOG(" %d(%s)", group, cs_group_name(res->handle, group));
 	}
 	MYLOG("\n");
-	
+
 	/* LEVEL3: branch code, branch hint, update_cr0, operands */
 	if(1 /* branch instruction */) {
 		MYLOG("  branch code: %d\n", ppc->bc); // PPC_BC_LT, PPC_BC_LE, etc.

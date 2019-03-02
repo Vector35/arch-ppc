@@ -466,7 +466,7 @@ class PowerpcArchitecture: public Architecture
 			MYLOG("ERROR: need at least 4 bytes\n");
 			goto cleanup;
 		}
-		
+
 		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			goto cleanup;
@@ -488,10 +488,10 @@ class PowerpcArchitecture: public Architecture
 			case PPC_INS_CRMOVE:
 				capstoneWorkaround = true;
 		}
-		
+
 		/* mnemonic */
 		result.emplace_back(InstructionToken, insn->mnemonic);
-		
+
 		/* padding between mnemonic and operands */
 		memset(buf, ' ', 8);
 		strlenMnem = strlen(insn->mnemonic);
@@ -558,13 +558,13 @@ class PowerpcArchitecture: public Architecture
 					//MYLOG("pushing a ???\n");
 					result.emplace_back(TextToken, "???");
 			}
-	
+
 			if(i < ppc->op_count-1) {
 				//MYLOG("pushing a comma\n");
 				result.emplace_back(OperandSeparatorToken, ", ");
 			}
 		}
-		
+
 		rc = true;
 		len = 4;
 		cleanup:
@@ -770,7 +770,7 @@ class PowerpcArchitecture: public Architecture
 	}
 
 	/*************************************************************************/
-	/* FLAGS API 
+	/* FLAGS API
 		1) flag identifiers and names
 		2) flag write types and names
 		3) flag roles "which flags act like a carry flag?"
@@ -842,12 +842,12 @@ class PowerpcArchitecture: public Architecture
 	}
 
 	/*
-		flag write types 
+		flag write types
 	*/
 	virtual vector<uint32_t> GetAllFlagWriteTypes() override
 	{
 		return vector<uint32_t> {
-			IL_FLAGWRITE_NONE, 
+			IL_FLAGWRITE_NONE,
 
 			IL_FLAGWRITE_CR0_S, IL_FLAGWRITE_CR1_S, IL_FLAGWRITE_CR2_S, IL_FLAGWRITE_CR3_S,
 			IL_FLAGWRITE_CR4_S, IL_FLAGWRITE_CR5_S, IL_FLAGWRITE_CR6_S, IL_FLAGWRITE_CR7_S,
@@ -1018,7 +1018,7 @@ class PowerpcArchitecture: public Architecture
 				return vector<uint32_t> {
 					IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
 				};
-			
+
 			case IL_FLAGWRITE_CR7_S:
 			case IL_FLAGWRITE_CR7_U:
 			case IL_FLAGWRITE_MTCR7:
@@ -1080,7 +1080,7 @@ class PowerpcArchitecture: public Architecture
 	virtual vector<uint32_t> GetAllSemanticFlagClasses() override
 	{
 		return vector<uint32_t> {
-			IL_FLAGCLASS_NONE, 
+			IL_FLAGCLASS_NONE,
 
 			IL_FLAGCLASS_CR0_S, IL_FLAGCLASS_CR1_S, IL_FLAGCLASS_CR2_S, IL_FLAGCLASS_CR3_S,
 			IL_FLAGCLASS_CR4_S, IL_FLAGCLASS_CR5_S, IL_FLAGCLASS_CR6_S, IL_FLAGCLASS_CR7_S,
@@ -1102,21 +1102,21 @@ class PowerpcArchitecture: public Architecture
 	{
 		return vector<uint32_t> {
 			IL_FLAGGROUP_CR0_LT, IL_FLAGGROUP_CR0_LE, IL_FLAGGROUP_CR0_GT,
-			IL_FLAGGROUP_CR0_GE, IL_FLAGGROUP_CR0_EQ, IL_FLAGGROUP_CR0_NE, 
+			IL_FLAGGROUP_CR0_GE, IL_FLAGGROUP_CR0_EQ, IL_FLAGGROUP_CR0_NE,
 			IL_FLAGGROUP_CR1_LT, IL_FLAGGROUP_CR1_LE, IL_FLAGGROUP_CR1_GT,
-			IL_FLAGGROUP_CR1_GE, IL_FLAGGROUP_CR1_EQ, IL_FLAGGROUP_CR1_NE, 
+			IL_FLAGGROUP_CR1_GE, IL_FLAGGROUP_CR1_EQ, IL_FLAGGROUP_CR1_NE,
 			IL_FLAGGROUP_CR2_LT, IL_FLAGGROUP_CR2_LE, IL_FLAGGROUP_CR2_GT,
-			IL_FLAGGROUP_CR2_GE, IL_FLAGGROUP_CR2_EQ, IL_FLAGGROUP_CR2_NE, 
+			IL_FLAGGROUP_CR2_GE, IL_FLAGGROUP_CR2_EQ, IL_FLAGGROUP_CR2_NE,
 			IL_FLAGGROUP_CR3_LT, IL_FLAGGROUP_CR3_LE, IL_FLAGGROUP_CR3_GT,
-			IL_FLAGGROUP_CR3_GE, IL_FLAGGROUP_CR3_EQ, IL_FLAGGROUP_CR3_NE, 
+			IL_FLAGGROUP_CR3_GE, IL_FLAGGROUP_CR3_EQ, IL_FLAGGROUP_CR3_NE,
 			IL_FLAGGROUP_CR4_LT, IL_FLAGGROUP_CR4_LE, IL_FLAGGROUP_CR4_GT,
-			IL_FLAGGROUP_CR4_GE, IL_FLAGGROUP_CR4_EQ, IL_FLAGGROUP_CR4_NE, 
+			IL_FLAGGROUP_CR4_GE, IL_FLAGGROUP_CR4_EQ, IL_FLAGGROUP_CR4_NE,
 			IL_FLAGGROUP_CR5_LT, IL_FLAGGROUP_CR5_LE, IL_FLAGGROUP_CR5_GT,
-			IL_FLAGGROUP_CR5_GE, IL_FLAGGROUP_CR5_EQ, IL_FLAGGROUP_CR5_NE, 
+			IL_FLAGGROUP_CR5_GE, IL_FLAGGROUP_CR5_EQ, IL_FLAGGROUP_CR5_NE,
 			IL_FLAGGROUP_CR6_LT, IL_FLAGGROUP_CR6_LE, IL_FLAGGROUP_CR6_GT,
-			IL_FLAGGROUP_CR6_GE, IL_FLAGGROUP_CR6_EQ, IL_FLAGGROUP_CR6_NE, 
+			IL_FLAGGROUP_CR6_GE, IL_FLAGGROUP_CR6_EQ, IL_FLAGGROUP_CR6_NE,
 			IL_FLAGGROUP_CR7_LT, IL_FLAGGROUP_CR7_LE, IL_FLAGGROUP_CR7_GT,
-			IL_FLAGGROUP_CR7_GE, IL_FLAGGROUP_CR7_EQ, IL_FLAGGROUP_CR7_NE, 
+			IL_FLAGGROUP_CR7_GE, IL_FLAGGROUP_CR7_EQ, IL_FLAGGROUP_CR7_NE,
 		};
 	}
 
@@ -1256,7 +1256,7 @@ class PowerpcArchitecture: public Architecture
 				return OverflowFlagRole;
 			case IL_FLAG_XER_CA:
 				return CarryFlagRole;
-			default: 
+			default:
 				return SpecialFlagRole;
 		}
 	}
@@ -1287,7 +1287,7 @@ class PowerpcArchitecture: public Architecture
 			case LLFC_SLE: /* (signed) lesser-or-equal == !GT */
 				return vector<uint32_t>{ IL_FLAG_GT };
 
-			case LLFC_NEG: 
+			case LLFC_NEG:
 			case LLFC_POS:
 				/* no ppc flags (that I'm aware of) indicate sign of result */
 				return vector<uint32_t>();
@@ -1297,7 +1297,7 @@ class PowerpcArchitecture: public Architecture
 				/* difficult:
 					crX: 8 signed sticky versions
 					XER: 1 unsigned sticky, 1 unsigned traditional */
-				return vector<uint32_t>{ 
+				return vector<uint32_t>{
 					IL_FLAG_XER_OV
 				};
 
@@ -1331,17 +1331,17 @@ class PowerpcArchitecture: public Architecture
 	{
 		vector<uint32_t> result = {
 			PPC_REG_CARRY, PPC_REG_CC,
-	
+
 			PPC_REG_CR0, PPC_REG_CR1, PPC_REG_CR2, PPC_REG_CR3, PPC_REG_CR4, PPC_REG_CR5, PPC_REG_CR6, PPC_REG_CR7,
 
-			PPC_REG_CTR, 
+			PPC_REG_CTR,
 
 			PPC_REG_F0, PPC_REG_F1, PPC_REG_F2, PPC_REG_F3,  PPC_REG_F4, PPC_REG_F5, PPC_REG_F6, PPC_REG_F7,
 			PPC_REG_F8, PPC_REG_F9, PPC_REG_F10, PPC_REG_F11, PPC_REG_F12, PPC_REG_F13, PPC_REG_F14, PPC_REG_F15,
 			PPC_REG_F16, PPC_REG_F17, PPC_REG_F18, PPC_REG_F19, PPC_REG_F20, PPC_REG_F21, PPC_REG_F22, PPC_REG_F23,
 			PPC_REG_F24, PPC_REG_F25, PPC_REG_F26, PPC_REG_F27, PPC_REG_F28, PPC_REG_F29, PPC_REG_F30, PPC_REG_F31,
 
-			PPC_REG_LR, 
+			PPC_REG_LR,
 
 			PPC_REG_R0, PPC_REG_R1, PPC_REG_R2, PPC_REG_R3, PPC_REG_R4, PPC_REG_R5,  PPC_REG_R6, PPC_REG_R7,
 			PPC_REG_R8, PPC_REG_R9, PPC_REG_R10, PPC_REG_R11, PPC_REG_R12, PPC_REG_R13, PPC_REG_R14, PPC_REG_R15,
@@ -1349,7 +1349,7 @@ class PowerpcArchitecture: public Architecture
 			PPC_REG_R24, PPC_REG_R25, PPC_REG_R26, PPC_REG_R27, PPC_REG_R28, PPC_REG_R29, PPC_REG_R30, PPC_REG_R31,
 
 			PPC_REG_V0, PPC_REG_V1, PPC_REG_V2, PPC_REG_V3, PPC_REG_V4, PPC_REG_V5, PPC_REG_V6, PPC_REG_V7,
-			PPC_REG_V8, PPC_REG_V9, PPC_REG_V10, PPC_REG_V11, PPC_REG_V12, PPC_REG_V13, PPC_REG_V14, PPC_REG_V15, 
+			PPC_REG_V8, PPC_REG_V9, PPC_REG_V10, PPC_REG_V11, PPC_REG_V12, PPC_REG_V13, PPC_REG_V14, PPC_REG_V15,
 			PPC_REG_V16, PPC_REG_V17, PPC_REG_V18, PPC_REG_V19, PPC_REG_V20, PPC_REG_V21, PPC_REG_V22, PPC_REG_V23,
 			PPC_REG_V24, PPC_REG_V25, PPC_REG_V26, PPC_REG_V27, PPC_REG_V28, PPC_REG_V29, PPC_REG_V30, PPC_REG_V31,
 			PPC_REG_VRSAVE,
@@ -1382,7 +1382,7 @@ class PowerpcArchitecture: public Architecture
 		//MYLOG("%s(%s)\n", __func__, powerpc_reg_to_str(regId));
 
 		switch(regId) {
-			// BNRegisterInfo RegisterInfo(uint32_t fullWidthReg, size_t offset, 
+			// BNRegisterInfo RegisterInfo(uint32_t fullWidthReg, size_t offset,
 			//   size_t size, bool zeroExtend = false)
 
 			case PPC_REG_CARRY: return RegisterInfo(PPC_REG_CARRY, 0, 4);
@@ -1559,7 +1559,7 @@ class PowerpcArchitecture: public Architecture
 			case PPC_REG_VS62: return RegisterInfo(PPC_REG_VS62, 0, 4);
 			case PPC_REG_VS63: return RegisterInfo(PPC_REG_VS63, 0, 4);
 			default:
-				LogError("%s(%d == \"%s\") invalid argument", __func__, 
+				LogError("%s(%d == \"%s\") invalid argument", __func__,
 				  regId, powerpc_reg_to_str(regId));
 				return RegisterInfo(0,0,0);
 		}
@@ -1592,7 +1592,7 @@ class PowerpcArchitecture: public Architecture
 		src += string(buf);
 		src += code;
 
-		/* assemble */	
+		/* assemble */
 		vector<uint8_t> byteEncoding;
 		if(assemble_multiline(src, byteEncoding, errors)) {
 			MYLOG("assemble_multiline() failed, errors contains: %s\n", errors.c_str());
@@ -1790,7 +1790,7 @@ class PowerpcArchitecture: public Architecture
 		else {
 			return false;
 		}
-		
+
 		if(endian == BigEndian)
 			iwAfter = bswap32(iwAfter);
 		*(uint32_t *)data = iwAfter;
@@ -2015,7 +2015,7 @@ public:
 
 	virtual vector<uint32_t> GetFloatArgumentRegisters() override
 	{
-		return vector<uint32_t>{ 
+		return vector<uint32_t>{
 			PPC_REG_F1, PPC_REG_F2, PPC_REG_F3, PPC_REG_F4,
 			PPC_REG_F5, PPC_REG_F6, PPC_REG_F7, PPC_REG_F8,
 			PPC_REG_F9, PPC_REG_F10, PPC_REG_F11, PPC_REG_F12,
@@ -2035,7 +2035,7 @@ public:
 			PPC_REG_F4, PPC_REG_F5, PPC_REG_F6, PPC_REG_F7,
 			PPC_REG_F8, PPC_REG_F9, PPC_REG_F10, PPC_REG_F11,
 			PPC_REG_F12, PPC_REG_F13,
-			
+
 			PPC_REG_LR, PPC_REG_CTR,
 		};
 	}

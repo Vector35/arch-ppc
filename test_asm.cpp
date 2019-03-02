@@ -114,7 +114,7 @@ int main(int ac, char **av)
 		if(assemble_single(av[1], TEST_ADDR, encoding, err, failures)) {
 			printf("ERROR: %s", err.c_str());
 			return -1;
-		}		
+		}
 		tdelta = (double)(clock()-t0)/CLOCKS_PER_SEC;
 
 		printf("assemble_single() duration: %fs (%f assembles/sec)\n", tdelta, 1/tdelta);

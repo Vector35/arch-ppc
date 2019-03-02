@@ -1,10 +1,22 @@
-# binja_ppc
-PowerPC Architecture Plugin for Binary Ninja
+# ppc-capstone
+This is a PowerPC architecture plugin for Binary Ninja.
 
-Capstone will temporarily be used as the disassembler. Along with the lifter, this will all be wrapped into an architecture plugin for Binary Ninja. Currently development is on MacOS.
+It demonstrates:
 
-# gotchas and catches
-* "json/json.h" from binaryninjaapi.h doesn't exist yet in the api, so you'll roadblock just by including this file
-* if you're internal, do `ln -s ~/repos/v35/binaryninja/core/json ./json`
+* use of an existing disassembler (capstone) in making an architecture
+* use of the genetic algorithm for assembling (oracle: capstone)
+* proper lifting
+
+Note that assembler.cpp and test_asm.cpp are isolated, in that they do not include any binja headers or link against any binja libs. This allows quick command line compilation, debugging, and testing:
+
+`g++ -std=c++11 -O0 -g test_asm.cpp assembler.cpp -o test_asm -lcapstone`
+
+A similar situation exists for disassembler.cpp and test_disasm.cpp:
+
+`g++ -std=c++11 -O0 -g test_disasm.cpp disassembler.cpp -o test_disasm -lcapstone`
+
+
+
+
 
 
