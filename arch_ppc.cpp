@@ -2210,6 +2210,7 @@ public:
 				reloc.size = 2;
 				reloc.pcRelative = true;
 				break;
+			case R_PPC_REL24:
 			case R_PPC_PLTREL24:
 				reloc.pcRelative = true;
 				break;
@@ -2228,7 +2229,7 @@ public:
 				reloc.pcRelative = true;
 				break;
 			default:
-				reloc.type = IgnoredRelocation;
+				reloc.type = UnhandledRelocation;
 				relocTypes.insert(reloc.nativeType);
 				break;
 			}
@@ -2267,7 +2268,7 @@ public:
 		set<uint32_t> relocTypes;
 		for (auto& reloc : result)
 		{
-			reloc.type = IgnoredRelocation;
+			reloc.type = UnhandledRelocation;
 			relocTypes.insert(reloc.nativeType);
 		}
 		for (auto& reloc : relocTypes)
