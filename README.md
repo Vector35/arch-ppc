@@ -15,8 +15,8 @@ A similar situation exists for disassembler.cpp and test_disasm.cpp:
 
 `g++ -std=c++11 -O0 -g test_disasm.cpp disassembler.cpp -o test_disasm -lcapstone`
 
+## License
 
+This code MIT licensed, see [LICENSE.txt](./license.txt).
 
-
-
-
+It links against the [Capstone disassembly framework](https://github.com/aquynh/capstone) which is BSD licensed.
