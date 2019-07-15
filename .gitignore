@@ -1,4 +1,10 @@
 Thumbs.db
 .DS_Store
 *.o
+<<<<<<< Updated upstream
 *.dylib
+=======
+*.so
+*.so.*
+*.dylib
+>>>>>>> Stashed changes
