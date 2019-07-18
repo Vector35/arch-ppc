@@ -4,3 +4,8 @@ Thumbs.db
 *.so
 *.so.*
 *.dylib
+*.dll
+*.exp
+*.ilk
+*.lib
+*.pdb
