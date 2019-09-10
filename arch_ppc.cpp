@@ -2287,22 +2287,34 @@ extern "C"
 		Architecture* ppc = new PowerpcArchitecture("ppc", BigEndian);
 		Architecture::Register(ppc);
 
+		Architecture* ppc64 = new PowerpcArchitecture("ppc64", BigEndian);
+		Architecture::Register(ppc64);
+
 		Architecture* ppc_le = new PowerpcArchitecture("ppc_le", LittleEndian);
 		Architecture::Register(ppc_le);
+
+		Architecture* ppc64_le = new PowerpcArchitecture("ppc64_le", LittleEndian);
+		Architecture::Register(ppc64_le);
 
 		/* calling conventions */
 		Ref<CallingConvention> conv;
 		conv = new PpcSvr4CallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
 		ppc->SetDefaultCallingConvention(conv);
+		ppc64->RegisterCallingConvention(conv);
+		ppc64->SetDefaultCallingConvention(conv);
 		conv = new PpcLinuxSyscallCallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
+		ppc64->RegisterCallingConvention(conv);
 
 		conv = new PpcSvr4CallingConvention(ppc_le);
 		ppc_le->RegisterCallingConvention(conv);
 		ppc_le->SetDefaultCallingConvention(conv);
+		ppc64_le->RegisterCallingConvention(conv);
+		ppc64_le->SetDefaultCallingConvention(conv);
 		conv = new PpcLinuxSyscallCallingConvention(ppc_le);
 		ppc_le->RegisterCallingConvention(conv);
+		ppc64_le->RegisterCallingConvention(conv);
 
 		/* function recognizer */
 		ppc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
@@ -2351,9 +2363,23 @@ extern "C"
 
 		BinaryViewType::RegisterArchitecture(
 			"ELF", /* name of the binary view type */
+			EM_PPC64, /* id (key in m_arch map) */
+			BigEndian,
+			ppc64 /* the architecture */
+		);
+
+		BinaryViewType::RegisterArchitecture(
+			"ELF", /* name of the binary view type */
 			EM_PPC, /* id (key in m_arch map) */
 			LittleEndian,
 			ppc_le /* the architecture */
+		);
+
+		BinaryViewType::RegisterArchitecture(
+			"ELF", /* name of the binary view type */
+			EM_PPC64, /* id (key in m_arch map) */
+			LittleEndian,
+			ppc64_le /* the architecture */
 		);
 
 		return true;
