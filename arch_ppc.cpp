@@ -353,6 +353,11 @@ class PowerpcArchitecture: public Architecture
 			return false;
 		}
 
+		if (DoesQualifyForLocalDisassembly(data)) {
+			result.length = 4;
+			return true;
+		}
+
 		/* decompose the instruction to get branch info */
 		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
@@ -446,6 +451,51 @@ class PowerpcArchitecture: public Architecture
 		return true;
 	}
 
+	bool DoesQualifyForLocalDisassembly(const uint8_t *data)
+	{
+		uint32_t insword = *(uint32_t *)data;
+		if(endian == BigEndian)
+			insword = bswap32(insword);
+
+		// 111111xxx00xxxxxxxxxx00001000000 -> fcmpo, pattern sufficient for fcmpo in libopcodes
+		if ((insword & 0xFC6007FF) == 0xFC000040)
+			return true;
+
+		return false;
+	}
+
+	bool PerformLocalDisassembly(const uint8_t *data, uint64_t addr, size_t &len, vector<InstructionTextToken> &result)
+	{
+		(void)addr;
+
+		if (len < 4) return false;
+		uint32_t insword = *(uint32_t *)data;
+		if(endian == BigEndian)
+			insword = bswap32(insword);
+
+		char buf[16];
+
+		// 111111AAA00BBBBBCCCCC00001000000 "fcmpo crA,fB,fC"
+		if ((insword & 0xFC6007FF) == 0xFC000040) {
+			result.emplace_back(TextToken, "fcmpo");
+			result.emplace_back(TextToken, "   ");
+			sprintf(buf, "cr%d", (insword >> 23) & 7);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "f%d", (insword >> 16) & 31);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "f%d", (insword >> 11) & 31);
+			result.emplace_back(RegisterToken, buf);
+		}
+		else {
+			return false;
+		}
+
+		len = 4;
+		return true;
+	}
+
 	/* populate the vector result with InstructionTextToken
 
 	*/
@@ -466,6 +516,9 @@ class PowerpcArchitecture: public Architecture
 			MYLOG("ERROR: need at least 4 bytes\n");
 			goto cleanup;
 		}
+
+		if (DoesQualifyForLocalDisassembly(data))
+			return PerformLocalDisassembly(data, addr, len, result);
 
 		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
@@ -585,6 +638,13 @@ class PowerpcArchitecture: public Architecture
 		//}
 
 		struct decomp_result res;
+
+		if (DoesQualifyForLocalDisassembly(data)) {
+			il.AddInstruction(il.Unimplemented());
+			rc = true;
+			len = 4;
+			goto cleanup;
+		}
 
 		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
