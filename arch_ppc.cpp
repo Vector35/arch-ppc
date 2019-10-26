@@ -472,6 +472,13 @@ class PowerpcArchitecture: public Architecture
 		tmp = insword & 0xFC00007E;
 		if (tmp==0x1000000C || tmp==0x1000000E || tmp==0x1000004C || tmp==0x1000004E)
 			return true;
+		// 000100xxxxxxxxxx00000xxxxx011000 <- ps_muls0
+		// 000100xxxxxxxxxx00000xxxxx011001 <- ps_muls0.
+		// 000100xxxxxxxxxx00000xxxxx011010 <- ps_muls1
+		// 000100xxxxxxxxxx00000xxxxx011011 <- ps_muls1.
+		tmp = insword & 0xFC00F83F;
+		if (tmp==0x10000018 || tmp==0x10000019 || tmp==0x1000001A || tmp==0x1000001B)
+			return true;
 
 		return false;
 	}
@@ -484,6 +491,8 @@ class PowerpcArchitecture: public Architecture
 		uint32_t insword = *(uint32_t *)data;
 		if(endian == BigEndian)
 			insword = bswap32(insword);
+
+		len = 4;
 
 		char buf[16];
 
@@ -501,9 +510,11 @@ class PowerpcArchitecture: public Architecture
 			result.emplace_back(OperandSeparatorToken, ", ");
 			sprintf(buf, "f%d", (insword >> 11) & 31);
 			result.emplace_back(RegisterToken, buf);
+			return true;
 		}
+
 		// 111100AAAAABBBBBCCCCC00011010BCA "xxpermr vsA,vsB,vsC"
-		else if ((insword & 0xFC0007F8)==0xF00001D0) {
+		if ((insword & 0xFC0007F8)==0xF00001D0) {
 			int a = ((insword & 0x3E00000)>>21)|((insword & 0x1)<<5);
 			int b = ((insword & 0x1F0000)>>16)|((insword & 0x4)<<3);
 			int c = ((insword & 0xF800)>>11)|((insword & 0x2)<<4);
@@ -517,7 +528,9 @@ class PowerpcArchitecture: public Architecture
 			result.emplace_back(OperandSeparatorToken, ", ");
 			sprintf(buf, "vs%d", c);
 			result.emplace_back(RegisterToken, buf);
+			return true;
 		}
+
 		// 000100AAAAABBBBBCCCCCDEEE000110x psq_lx FREG,GPR,GPR,NUM,NUM
 		// 000100AAAAABBBBBCCCCCDEEE000111x psq_stx FREG,GPR,GPR,NUM,NUM
 		// 000100AAAAABBBBBCCCCCDEEE100110x psq_lux FREG,GPR,GPR,NUM,NUM
@@ -555,13 +568,34 @@ class PowerpcArchitecture: public Architecture
 			tmp = (insword & 0x380)>>7;
 			sprintf(buf, "%d", tmp);
 			result.emplace_back(IntegerToken, buf, tmp, 1);
-		}
-		else {
-			return false;
+			return true;
 		}
 
-		len = 4;
-		return true;
+		// 000100AAAAABBBBB00000CCCCC011000 ps_muls0 FREG,FREG,FREG
+		// 000100AAAAABBBBB00000CCCCC011001 ps_muls0. FREG,FREG,FREG
+		// 000100AAAAABBBBB00000CCCCC011010 ps_muls1 FREG,FREG,FREG
+		// 000100AAAAABBBBB00000CCCCC011011 ps_muls1. FREG,FREG,FREG
+		tmp = insword & 0xFC00F83F;
+		if (tmp==0x10000018 || tmp==0x10000019 || tmp==0x1000001A || tmp==0x1000001B) {
+			switch(tmp) {
+				case 0x10000018: result.emplace_back(TextToken, "ps_muls0"); break;
+				case 0x10000019: result.emplace_back(TextToken, "ps_muls0."); break;
+				case 0x1000001A: result.emplace_back(TextToken, "ps_muls1"); break;
+				case 0x1000001B: result.emplace_back(TextToken, "ps_muls1."); break;
+			}
+			result.emplace_back(TextToken, " ");
+			sprintf(buf, "f%d", (insword & 0x3E00000)>>21);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "f%d", (insword & 0x1F0000)>>16);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "f%d", (insword & 0x7C0)>>6);
+			result.emplace_back(RegisterToken, buf);
+			return true;
+		}
+
+		return false;
 	}
 
 	/* populate the vector result with InstructionTextToken
