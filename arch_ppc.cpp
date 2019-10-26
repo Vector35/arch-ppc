@@ -457,8 +457,11 @@ class PowerpcArchitecture: public Architecture
 		if(endian == BigEndian)
 			insword = bswap32(insword);
 
-		// 111111xxx00xxxxxxxxxx00001000000 -> fcmpo, pattern sufficient for fcmpo in libopcodes
+		// 111111xxx00xxxxxxxxxx00001000000 <- fcmpo
 		if ((insword & 0xFC6007FF) == 0xFC000040)
+			return true;
+		// 111100xxxxxxxxxxxxxxx00111010xxx <- xxpermr
+		if((insword & 0xFC0007F8)==0xF00001D0)
 			return true;
 
 		return false;
@@ -486,6 +489,22 @@ class PowerpcArchitecture: public Architecture
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
 			sprintf(buf, "f%d", (insword >> 11) & 31);
+			result.emplace_back(RegisterToken, buf);
+		}
+		// 111100AAAAABBBBBCCCCC00011010BCA "xxpermr vsA,vsB,vsC"
+		else if ((insword & 0xFC0007F8)==0xF00001D0) {
+			int a = ((insword & 0x3E00000)>>21)|((insword & 0x1)<<5);
+			int b = ((insword & 0x1F0000)>>16)|((insword & 0x4)<<3);
+			int c = ((insword & 0xF800)>>11)|((insword & 0x2)<<4);
+			result.emplace_back(TextToken, "xxpermr");
+			result.emplace_back(TextToken, " ");
+			sprintf(buf, "vs%d", a);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "vs%d", b);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "vs%d", c);
 			result.emplace_back(RegisterToken, buf);
 		}
 		else {
