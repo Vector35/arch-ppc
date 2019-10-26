@@ -460,8 +460,11 @@ class PowerpcArchitecture: public Architecture
 		// 111111xxx00xxxxxxxxxx00001000000 <- fcmpo
 		if ((insword & 0xFC6007FF) == 0xFC000040)
 			return true;
+		// 111111xxx00xxxxxxxxxx00000000000 <- fcmpu
+		if ((insword & 0xFC6007FF) == 0xFC000000)
+			return true;
 		// 111100xxxxxxxxxxxxxxx00111010xxx <- xxpermr
-		if((insword & 0xFC0007F8)==0xF00001D0)
+		if((insword & 0xFC0007F8) == 0xF00001D0)
 			return true;
 
 		return false;
@@ -481,6 +484,19 @@ class PowerpcArchitecture: public Architecture
 		// 111111AAA00BBBBBCCCCC00001000000 "fcmpo crA,fB,fC"
 		if ((insword & 0xFC6007FF) == 0xFC000040) {
 			result.emplace_back(TextToken, "fcmpo");
+			result.emplace_back(TextToken, "   ");
+			sprintf(buf, "cr%d", (insword >> 23) & 7);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "f%d", (insword >> 16) & 31);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "f%d", (insword >> 11) & 31);
+			result.emplace_back(RegisterToken, buf);
+		}
+		// 111111AAA00BBBBBCCCCC00000000000 "fcmpu crA,fB,fC"
+		else if ((insword & 0xFC6007FF) == 0xFC000040) {
+			result.emplace_back(TextToken, "fcmpu");
 			result.emplace_back(TextToken, "   ");
 			sprintf(buf, "cr%d", (insword >> 23) & 7);
 			result.emplace_back(RegisterToken, buf);
