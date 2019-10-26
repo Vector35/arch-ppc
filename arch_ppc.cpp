@@ -458,13 +458,19 @@ class PowerpcArchitecture: public Architecture
 			insword = bswap32(insword);
 
 		// 111111xxx00xxxxxxxxxx00001000000 <- fcmpo
-		if ((insword & 0xFC6007FF) == 0xFC000040)
-			return true;
 		// 111111xxx00xxxxxxxxxx00000000000 <- fcmpu
-		if ((insword & 0xFC6007FF) == 0xFC000000)
+		uint32_t tmp = insword & 0xFC6007FF;
+		if (tmp==0xFC000040 || tmp==0xFC000000)
 			return true;
 		// 111100xxxxxxxxxxxxxxx00111010xxx <- xxpermr
 		if((insword & 0xFC0007F8) == 0xF00001D0)
+			return true;
+		// 000100xxxxxxxxxxxxxxxxxxx000110x <- psq_lx
+		// 000100xxxxxxxxxxxxxxxxxxx000111x <- psq_stx
+		// 000100xxxxxxxxxxxxxxxxxxx100110x <- psq_lux
+		// 000100xxxxxxxxxxxxxxxxxxx100111x <- psq_stux
+		tmp = insword & 0xFC00007E;
+		if (tmp==0x1000000C || tmp==0x1000000E || tmp==0x1000004C || tmp==0x1000004E)
 			return true;
 
 		return false;
@@ -482,21 +488,10 @@ class PowerpcArchitecture: public Architecture
 		char buf[16];
 
 		// 111111AAA00BBBBBCCCCC00001000000 "fcmpo crA,fB,fC"
-		if ((insword & 0xFC6007FF) == 0xFC000040) {
-			result.emplace_back(TextToken, "fcmpo");
-			result.emplace_back(TextToken, "   ");
-			sprintf(buf, "cr%d", (insword >> 23) & 7);
-			result.emplace_back(RegisterToken, buf);
-			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "f%d", (insword >> 16) & 31);
-			result.emplace_back(RegisterToken, buf);
-			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "f%d", (insword >> 11) & 31);
-			result.emplace_back(RegisterToken, buf);
-		}
 		// 111111AAA00BBBBBCCCCC00000000000 "fcmpu crA,fB,fC"
-		else if ((insword & 0xFC6007FF) == 0xFC000040) {
-			result.emplace_back(TextToken, "fcmpu");
+		uint32_t tmp = insword & 0xFC6007FF;
+		if (tmp==0xFC000040 || tmp==0xFC000040) {
+			result.emplace_back(TextToken, tmp==0xFC000040 ? "fcmpo":"fcmpu");
 			result.emplace_back(TextToken, "   ");
 			sprintf(buf, "cr%d", (insword >> 23) & 7);
 			result.emplace_back(RegisterToken, buf);
@@ -522,6 +517,44 @@ class PowerpcArchitecture: public Architecture
 			result.emplace_back(OperandSeparatorToken, ", ");
 			sprintf(buf, "vs%d", c);
 			result.emplace_back(RegisterToken, buf);
+		}
+		// 000100AAAAABBBBBCCCCCDEEE000110x psq_lx FREG,GPR,GPR,NUM,NUM
+		// 000100AAAAABBBBBCCCCCDEEE000111x psq_stx FREG,GPR,GPR,NUM,NUM
+		// 000100AAAAABBBBBCCCCCDEEE100110x psq_lux FREG,GPR,GPR,NUM,NUM
+		// 000100AAAAABBBBBCCCCCDEEE100111x psq_stux FREG,GPR,GPR,NUM,NUM
+		tmp = insword & 0xFC00007E;
+		if (tmp==0x1000000C || tmp==0x1000000E || tmp==0x1000004C || tmp==0x1000004E) {
+			switch(tmp) {
+				case 0x1000000C:
+					result.emplace_back(TextToken, "psq_lx");
+					result.emplace_back(TextToken, "  ");
+					break;
+				case 0x1000000E: result.emplace_back(TextToken, "psq_stx");
+					result.emplace_back(TextToken, " ");
+					break;
+				case 0x1000004C: result.emplace_back(TextToken, "psq_lux");
+					result.emplace_back(TextToken, " ");
+					break;
+				case 0x1000004E: result.emplace_back(TextToken, "psq_stux");
+					result.emplace_back(TextToken, " ");
+					break;
+			}
+			sprintf(buf, "f%d", (insword & 0x3E00000)>>21);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "r%d", (insword & 0x1F0000)>>16);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "r%d", (insword & 0xF800)>>11);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			tmp = (insword & 0x400)>>10;
+			sprintf(buf, "%d", tmp);
+			result.emplace_back(IntegerToken, buf, tmp, 1);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			tmp = (insword & 0x380)>>7;
+			sprintf(buf, "%d", tmp);
+			result.emplace_back(IntegerToken, buf, tmp, 1);
 		}
 		else {
 			return false;
