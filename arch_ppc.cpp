@@ -3,7 +3,6 @@
 #include <inttypes.h>
 #include <map>
 #include <vector>
-using namespace std;
 
 #include <binaryninjaapi.h>
 #define MYLOG(...) while(0);
@@ -18,6 +17,8 @@ using namespace BinaryNinja; // for ::LogDebug, etc.
 
 #include "il.h"
 #include "util.h"
+
+using namespace std;
 
 enum MachoPpcRelocationType
 {
