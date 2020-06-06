@@ -2167,7 +2167,7 @@ int disasm_capstone(uint8_t *data, uint32_t addr, string& result, string& err)
 	/* capstone vars */
 	static csh handle;
 	cs_insn *insn = NULL;
-	size_t count;
+	size_t count = 0;
 
 	if (!init) {
 		/* initialize capstone handle */

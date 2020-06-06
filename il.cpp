@@ -473,11 +473,11 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 
 	switch(ppc->op_count) {
 		default:
-		case 5: oper4 = &(ppc->operands[4]);
-		case 4: oper3 = &(ppc->operands[3]);
-		case 3: oper2 = &(ppc->operands[2]);
-		case 2: oper1 = &(ppc->operands[1]);
-		case 1: oper0 = &(ppc->operands[0]);
+		case 5: oper4 = &(ppc->operands[4]); FALL_THROUGH
+		case 4: oper3 = &(ppc->operands[3]); FALL_THROUGH
+		case 3: oper2 = &(ppc->operands[2]); FALL_THROUGH
+		case 2: oper1 = &(ppc->operands[1]); FALL_THROUGH
+		case 1: oper0 = &(ppc->operands[0]); FALL_THROUGH
 		case 0: while(0);
 	}
 

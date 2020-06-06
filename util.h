@@ -1,3 +1,11 @@
+#ifdef __clang__
+#define FALL_THROUGH
+#elif defined(__GNUC__) && __GNUC__ >= 7
+#define FALL_THROUGH __attribute__((fallthrough));
+#else
+#define FALL_THROUGH
+#endif
+
 inline uint32_t bswap32(uint32_t x)
 {
 	return ((x&0xFF)<<24) |

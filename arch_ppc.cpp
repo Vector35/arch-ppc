@@ -428,6 +428,7 @@ class PowerpcArchitecture: public Architecture
 				{
 					case 16:
 						blr = true;
+						FALL_THROUGH
 					case 528:
 						if ((bo & 0x14) == 0x14 && !lk)
 							result.AddBranch(blr ? FunctionReturn : UnresolvedBranch);
