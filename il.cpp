@@ -1302,7 +1302,8 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 				}
 
 				ei0 = il.And(4, ei0, il.Const(4, mask));
-				ei0 = il.Or(4, il.And(4, il.Register(4, oper0->reg), il.Const(4, ~mask)), ei0);
+				uint32_t invertMask = ~mask;
+				ei0 = il.Or(4, il.And(4, il.Register(4, oper0->reg), il.Const(4, invertMask)), ei0);
 
 				ei0 = il.SetRegister(4, oper0->reg, ei0,
 						ppc->update_cr0 ? IL_FLAGWRITE_CR0_S : 0

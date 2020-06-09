@@ -2406,7 +2406,7 @@ float hamming_similar(int a, int b)
 }
 
 float fitness(vector<token> dst, vector<token> src) {
-	unsigned n = dst.size();
+	size_t n = dst.size();
 
 	/* same number of tokens */
 	if(n != src.size())
@@ -2414,10 +2414,10 @@ float fitness(vector<token> dst, vector<token> src) {
 
 	/* */
 	float score = 0;
-	float scorePerToken = 100.0 / n;
+	float scorePerToken = 100.0f / (float)n;
 
 	/* for each token... */
-	for(unsigned i=0; i<n; ++i) {
+	for(size_t i=0; i<n; ++i) {
 		/* same type */
 		if(src[i].type != dst[i].type)
 			return 0;
@@ -2670,9 +2670,9 @@ int trim_lines(vector<string> &lines)
 {
 	vector<string> filtered;
 
-	for(unsigned i=0; i<lines.size(); ++i) {
+	for(size_t i=0; i<lines.size(); ++i) {
 		const char *p = lines[i].c_str();
-		int left = 0, right = lines[i].size()-1;
+		int left = 0, right = (int)lines[i].size()-1;
 
 		while(isspace(p[left]))
 			left += 1;
@@ -2697,8 +2697,8 @@ int trim_lines(vector<string> &lines)
 bool fmt_match(string fmt, string str, vector<string>& result)
 {
 	bool match = false;
-	int i=0, j=0;
-	int nfmt=fmt.size(), nstr=str.size();
+	size_t i=0, j=0;
+	size_t nfmt=fmt.size(), nstr=str.size();
 
 	result.clear();
 	while(1) {
@@ -2721,7 +2721,7 @@ bool fmt_match(string fmt, string str, vector<string>& result)
 		if(fcode=="\\I") {
 			if(!isalpha(str[j]))
 				goto cleanup;
-			int start = j;
+			size_t start = j;
 			j += 1;
 			while(isalnum(str[j]) || str[j]=='_')
 				j += 1;
@@ -2733,7 +2733,7 @@ bool fmt_match(string fmt, string str, vector<string>& result)
 			const char *raw = str.c_str();
 			char *endptr;
 			strtoul(raw + j, &endptr, 16);
-			int len = endptr - (raw+j);
+			size_t len = endptr - (raw+j);
 			if(!len) goto cleanup;
 			result.push_back(str.substr(j, len));
 			i += 2;
@@ -2999,7 +2999,7 @@ int assemble_multiline(const string& code, vector<uint8_t>& result, string& err)
 
 			/* replace the last word (if it exists) with a label/symbol */
 			string line = lines[i], token;
-			int left = line.size()-1;
+			int left = (int)line.size()-1;
 			while(left>=0 && isalnum(line[left]))
 				left--;
 			left += 1;
@@ -3007,7 +3007,7 @@ int assemble_multiline(const string& code, vector<uint8_t>& result, string& err)
 			if(fmt_match("\\I", token, fields)) {
 				if(symbols.find(token) != symbols.end()) {
 					char buf[16];
-					long value = symbols[token];
+					int64_t value = symbols[token];
 					if(value < 0) {
 						buf[0]='-';
 						sprintf(buf+1, "0x%08X", (unsigned)(-1*value));
@@ -3028,7 +3028,7 @@ int assemble_multiline(const string& code, vector<uint8_t>& result, string& err)
 			/* now actually assemble */
 			MYLOG("assembling: %s at address %" PRIx64 "\n", line.c_str(), vaddr);
 			int failures;
-			if(assemble_single(line, vaddr, encoding, err, failures)) {
+			if(assemble_single(line, (uint32_t)vaddr, encoding, err, failures)) {
 				MYLOG("assemble_single failed, err contains: %s\n", err.c_str());
 				goto cleanup;
 			}

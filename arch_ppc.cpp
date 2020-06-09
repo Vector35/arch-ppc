@@ -172,7 +172,7 @@ static const char* GetRelocationString(MachoPpcRelocationType relocType)
 	return "Unknown PPC relocation";
 }
 
-#define HA(x) ((((x) >> 16) + (((x) & 0x8000) ? 1 : 0)) & 0xffff)
+#define HA(x) (uint16_t)((((x) >> 16) + (((x) & 0x8000) ? 1 : 0)) & 0xffff)
 
 static const char* GetRelocationString(ElfPpcRelocationType relocType)
 {
@@ -360,7 +360,7 @@ class PowerpcArchitecture: public Architecture
 		}
 
 		/* decompose the instruction to get branch info */
-		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
+		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			return false;
 		}
@@ -608,7 +608,7 @@ class PowerpcArchitecture: public Architecture
 		bool rc = false;
 		bool capstoneWorkaround = false;
 		char buf[32];
-		int strlenMnem;
+		size_t strlenMnem;
 		struct decomp_result res;
 		struct cs_insn *insn = &(res.insn);
 		struct cs_detail *detail = &(res.detail);
@@ -624,7 +624,7 @@ class PowerpcArchitecture: public Architecture
 		if (DoesQualifyForLocalDisassembly(data))
 			return PerformLocalDisassembly(data, addr, len, result);
 
-		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
+		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			goto cleanup;
 		}
@@ -750,7 +750,7 @@ class PowerpcArchitecture: public Architecture
 			goto cleanup;
 		}
 
-		if(powerpc_decompose(data, 4, addr, endian == LittleEndian, &res)) {
+		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			il.AddInstruction(il.Undefined());
 			goto cleanup;
@@ -2291,50 +2291,50 @@ public:
 		uint32_t* dest32 = (uint32_t*)dest;
 		uint16_t* dest16 = (uint16_t*)dest;
 		auto swap = [&arch](uint32_t x) { return (arch->GetEndianness() == LittleEndian)? x : bswap32(x); };
-		auto swap16 = [&arch](uint32_t x) { return (arch->GetEndianness() == LittleEndian)? x : bswap16(x); };
+		auto swap16 = [&arch](uint16_t x) { return (arch->GetEndianness() == LittleEndian)? x : bswap16(x); };
 		uint64_t target = reloc->GetTarget();
 		switch (info.nativeType)
 		{
 		case R_PPC_ADDR16_LO:
-			dest16[0] = swap16((target + info.addend) & 0xffff);
+			dest16[0] = swap16((uint16_t)((target + info.addend) & 0xffff));
 			break;
 		case R_PPC_ADDR16_HA:
-			dest16[0] = swap16((target + info.addend) >> 16);
+			dest16[0] = swap16((uint16_t)((target + info.addend) >> 16));
 			break;
 		case R_PPC_REL24:
 			dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
-				((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
+				(uint32_t)((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
 			break;
 		case R_PPC_REL16_HA:
 			dest16[0] = swap16(HA(target - reloc->GetAddress() + info.addend));
 			break;
 		case R_PPC_REL16_HI:
-			dest16[0] = swap16((target - reloc->GetAddress()+ info.addend) >> 16);
+			dest16[0] = swap16((uint16_t)((target - reloc->GetAddress()+ info.addend) >> 16));
 			break;
 		case R_PPC_REL16_LO:
-			dest16[0] = swap16((target - reloc->GetAddress()+ info.addend) & 0xffff);
+			dest16[0] = swap16((uint16_t)((target - reloc->GetAddress()+ info.addend) & 0xffff));
 			break;
 		case R_PPC_JMP_SLOT:
 		case R_PPC_GLOB_DAT:
 		case R_PPC_COPY:
-			dest32[0] = swap(target);
+			dest32[0] = swap((uint32_t)target);
 			break;
 		case R_PPC_PLTREL24:
 			dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
-				((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
+				(uint32_t)((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
 			break;
 		case R_PPC_LOCAL24PC:
 			dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
-				((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
+				(uint32_t)((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
 			break;
 		case R_PPC_ADDR32:
-			dest32[0] = swap(target + info.addend);
+			dest32[0] = swap((uint32_t)(target + info.addend));
 			break;
 		case R_PPC_RELATIVE:
-			dest32[0] = swap(info.base);
+			dest32[0] = swap((uint32_t)info.base);
 			break;
 		case R_PPC_REL32:
-			dest32[0] = swap(target - reloc->GetAddress() + info.addend);
+			dest32[0] = swap((uint32_t)(target - reloc->GetAddress() + info.addend));
 			break;
 		}
 		return true;
@@ -2343,7 +2343,7 @@ public:
 	virtual bool GetRelocationInfo(Ref<BinaryView> view, Ref<Architecture> arch, vector<BNRelocationInfo>& result) override
 	{
 		(void)view; (void)arch; (void)result;
-		set<uint32_t> relocTypes;
+		set<uint64_t> relocTypes;
 		for (auto& reloc : result)
 		{
 			reloc.type = StandardRelocationType;
@@ -2429,7 +2429,7 @@ public:
 	virtual bool GetRelocationInfo(Ref<BinaryView> view, Ref<Architecture> arch, vector<BNRelocationInfo>& result) override
 	{
 		(void)view; (void)arch;
-		set<uint32_t> relocTypes;
+		set<uint64_t> relocTypes;
 		for (auto& reloc : result)
 		{
 			reloc.type = UnhandledRelocation;
