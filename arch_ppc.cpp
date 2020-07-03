@@ -763,7 +763,7 @@ class PowerpcArchitecture: public Architecture
 		return rc;
 	}
 
-	virtual size_t GetFlagWriteLowLevelIL(BNLowLevelILOperation op, size_t size, uint32_t flagWriteType,
+	virtual ExprId GetFlagWriteLowLevelIL(BNLowLevelILOperation op, size_t size, uint32_t flagWriteType,
 		uint32_t flag, BNRegisterOrConstant* operands, size_t operandCount, LowLevelILFunction& il) override
 	{
 		MYLOG("%s()\n", __func__);
