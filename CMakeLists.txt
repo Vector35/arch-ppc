@@ -30,15 +30,15 @@ endif()
 if(BN_INTERNAL_BUILD)
 	if(MSVC)
 		find_library(CAPSTONE_LIBRARY NAMES capstone_static
-			PATHS ${PROJECT_SOURCE_DIR}/../../capstone/windows
+			PATHS ${PROJECT_SOURCE_DIR}/../../../capstone/windows
 			REQUIRED NO_DEFAULT_PATH)
 	elseif(APPLE)
 		find_library(CAPSTONE_LIBRARY NAMES capstone
-			PATHS ${PROJECT_SOURCE_DIR}/../../capstone/mac
+			PATHS ${PROJECT_SOURCE_DIR}/../../../capstone/mac
 			REQUIRED NO_DEFAULT_PATH)
 	else()
 		find_library(CAPSTONE_LIBRARY NAMES capstone
-			PATHS ${PROJECT_SOURCE_DIR}/../../capstone/linux
+			PATHS ${PROJECT_SOURCE_DIR}/../../../capstone/linux
 			REQUIRED NO_DEFAULT_PATH)
 	endif()
 else()
@@ -63,7 +63,7 @@ set_target_properties(arch_ppc PROPERTIES
 	POSITION_INDEPENDENT_CODE ON)
 
 if(BN_INTERNAL_BUILD)
-	target_include_directories(arch_ppc PRIVATE ${PROJECT_SOURCE_DIR}/../../capstone/include)
+	target_include_directories(arch_ppc PRIVATE ${PROJECT_SOURCE_DIR}/../../../capstone/include)
 	plugin_rpath(arch_ppc)
 	set_target_properties(arch_ppc PROPERTIES
 		LIBRARY_OUTPUT_DIRECTORY ${BN_CORE_PLUGIN_DIR}
