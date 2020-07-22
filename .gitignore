@@ -11,5 +11,10 @@ Thumbs.db
 *.pdb
 *.obj
 CMakeFiles
+CMakeCache.txt
 Makefile
 cmake_install.cmake
+api
+build
+libarch_*
+arch_*.dll
