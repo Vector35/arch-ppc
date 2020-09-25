@@ -1743,6 +1743,11 @@ class PowerpcArchitecture: public Architecture
 
 	/*************************************************************************/
 
+	virtual bool CanAssemble() override
+	{
+		return true;
+	}
+
 	bool Assemble(const string& code, uint64_t addr, DataBuffer& result, string& errors) override
 	{
 		MYLOG("%s()\n", __func__);
