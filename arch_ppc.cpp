@@ -1286,7 +1286,7 @@ class PowerpcArchitecture: public Architecture
 
 	virtual std::string GetSemanticFlagGroupName(uint32_t semGroup) override
 	{
-		char name[16];
+		char name[32];
 		const char* suffix;
 
 		/* remove the cr part of the semGroup id from the equation */
@@ -1298,6 +1298,7 @@ class PowerpcArchitecture: public Architecture
 			case IL_FLAGGROUP_CR0_GE: suffix = "ge"; break;
 			case IL_FLAGGROUP_CR0_EQ: suffix = "eq"; break;
 			case IL_FLAGGROUP_CR0_NE: suffix = "ne"; break;
+			default: suffix = "invalid"; break;
 		}
 
 		snprintf(name, sizeof(name), "cr%d_%s", semGroup / 10, suffix);
