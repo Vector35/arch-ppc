@@ -2279,6 +2279,11 @@ public:
 	{
 		return PPC_REG_R3;
 	}
+
+	virtual bool IsEligibleForHeuristics() override
+	{
+		return false;
+	}
 };
 
 uint16_t bswap16(uint16_t x)
