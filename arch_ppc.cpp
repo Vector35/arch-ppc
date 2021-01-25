@@ -2454,6 +2454,8 @@ public:
 
 extern "C"
 {
+	BN_DECLARE_CORE_ABI_VERSION
+
 	BINARYNINJAPLUGIN bool CorePluginInit()
 	{
 		MYLOG("ARCH POWERPC compiled at %s %s\n", __DATE__, __TIME__);
