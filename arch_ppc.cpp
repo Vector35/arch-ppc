@@ -1495,7 +1495,7 @@ class PowerpcArchitecture: public Architecture
 	virtual vector<uint32_t> GetAllRegisters() override
 	{
 		vector<uint32_t> result = {
-			PPC_REG_CARRY, PPC_REG_CC,
+			PPC_REG_CARRY,
 
 			PPC_REG_CR0, PPC_REG_CR1, PPC_REG_CR2, PPC_REG_CR3, PPC_REG_CR4, PPC_REG_CR5, PPC_REG_CR6, PPC_REG_CR7,
 
@@ -1551,7 +1551,6 @@ class PowerpcArchitecture: public Architecture
 			//   size_t size, bool zeroExtend = false)
 
 			case PPC_REG_CARRY: return RegisterInfo(PPC_REG_CARRY, 0, 4);
-			case PPC_REG_CC: return RegisterInfo(PPC_REG_CC, 0, 4);
 			case PPC_REG_CR0: return RegisterInfo(PPC_REG_CR0, 0, 4);
 			case PPC_REG_CR1: return RegisterInfo(PPC_REG_CR1, 0, 4);
 			case PPC_REG_CR2: return RegisterInfo(PPC_REG_CR2, 0, 4);
