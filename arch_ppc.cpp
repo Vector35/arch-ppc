@@ -481,6 +481,22 @@ class PowerpcArchitecture: public Architecture
 		tmp = insword & 0xFC00F83F;
 		if (tmp==0x10000018 || tmp==0x10000019 || tmp==0x1000001A || tmp==0x1000001B)
 			return true;
+		// 01111100000000000000001000000110 <- mfdcrx
+		// 01111100000000000000001100000110 <- mtdcrx
+		tmp = insword & 0x7C0007FF;
+		if (tmp==0x7C000206 || tmp==0x7C000306)
+			return true;
+		// 00010000000000000000001100010000 <- mullhwu
+		// 00010000000000000000001100010001 <- mullhwu.
+		if (tmp==0x10000310 || tmp==0x10000311)
+			return true;
+		// 01111100000000000000001111001100 <- dcread
+		// 01111100000000000000001010001100 <- dcread alt
+		if (tmp==0x7c00028c || tmp==0x7c0003cc)
+			return true;
+		// 01111100000000000000000101001100 <- dcbtls
+		if (tmp==0x7c00014c)
+			return true;
 
 		return false;
 	}
@@ -593,6 +609,73 @@ class PowerpcArchitecture: public Architecture
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
 			sprintf(buf, "f%d", (insword & 0x7C0)>>6);
+			result.emplace_back(RegisterToken, buf);
+			return true;
+		}
+
+		// 01111100000000000000001000000110 <- mfdcrx
+		// 01111100000000000000001100000110 <- mtdcrx
+		tmp = insword & 0x7C0007FF;
+		if (tmp==0x7c000206 || tmp==0x7c000306) {
+			switch(tmp) {
+				case 0x7c000206: result.emplace_back(TextToken, "mfdcrx"); break;
+				case 0x7c000306: result.emplace_back(TextToken, "mtdcrx"); break;
+			}
+			result.emplace_back(TextToken, "  ");
+			sprintf(buf, "r%d", (insword & 0x3E00000)>>21);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "r%d", (insword & 0x1F0000)>>16);
+			result.emplace_back(RegisterToken, buf);
+			return true;
+		}
+
+		// 00010000000000000000001100010000 <- mullhwu
+		// 00010000000000000000001100010001 <- mullhwu.
+		if (tmp==0x10000310 || tmp==0x10000311) {
+			switch (tmp) {
+				case 0x10000310: result.emplace_back(TextToken, "mullhwu"); break;
+				case 0x10000311: result.emplace_back(TextToken, "mullhwu."); break;
+			}
+			result.emplace_back(TextToken, " ");
+			sprintf(buf, "r%d", (insword & 0x3E00000)>>21);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "r%d", (insword & 0x1F0000)>>16);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "r%d", (insword & 0xF800)>>11);
+			result.emplace_back(RegisterToken, buf);
+			return true;
+		}
+
+		// 01111100000000000000001111001100 <- dcread
+		// 01111100000000000000001010001100 <- dcread alt
+		if (tmp==0x7c00028c || tmp==0x7c0003cc) {
+			result.emplace_back(TextToken, "dcread");
+			result.emplace_back(TextToken, "  ");
+			sprintf(buf, "r%d", (insword & 0x3E00000)>>21);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "r%d", (insword & 0x1F0000)>>16);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "r%d", (insword & 0xF800)>>11);
+			result.emplace_back(RegisterToken, buf);
+			return true;
+		}
+
+		// 01111100000000000000000101001100 <- dcbtls
+		if (tmp==0x7c00014c) {
+			result.emplace_back(TextToken, "dcbtls");
+			result.emplace_back(TextToken, "  ");
+			sprintf(buf, "%d", (insword & 0x1E00000)>>21);
+			result.emplace_back(IntegerToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "r%d", (insword & 0x1F0000)>>16);
+			result.emplace_back(RegisterToken, buf);
+			result.emplace_back(OperandSeparatorToken, ", ");
+			sprintf(buf, "r%d", (insword & 0xF800)>>11);
 			result.emplace_back(RegisterToken, buf);
 			return true;
 		}
