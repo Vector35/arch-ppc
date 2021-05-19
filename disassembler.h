@@ -21,6 +21,10 @@ Then some helpers if you need them:
 
 ******************************************************************************/
 
+/* capstone ppc doesn't define an MSR (machine state register) register, but
+  support mtmsr and mfmsr instructions */
+#define PPC_REG_MSR (PPC_REG_ENDING+0)
+
 /* capstone stuff /usr/local/include/capstone */
 #include <capstone/capstone.h>
 #include <capstone/ppc.h>

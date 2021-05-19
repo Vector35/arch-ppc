@@ -926,8 +926,14 @@ class PowerpcArchitecture: public Architecture
 	{
 		const char *result = powerpc_reg_to_str(regId);
 
-		if(result == NULL)
-			result = "";
+		if(result == NULL) {
+			if(regId == PPC_REG_MSR) {
+				result = "msr";
+			}
+			else {
+				result = "";
+			}
+		}
 
 		//MYLOG("%s(%d) returns %s\n", __func__, regId, result);
 		return result;
@@ -1525,7 +1531,10 @@ class PowerpcArchitecture: public Architecture
 			PPC_REG_VS32, PPC_REG_VS33, PPC_REG_VS34, PPC_REG_VS35, PPC_REG_VS36, PPC_REG_VS37, PPC_REG_VS38, PPC_REG_VS39,
 			PPC_REG_VS40, PPC_REG_VS41, PPC_REG_VS42, PPC_REG_VS43, PPC_REG_VS44, PPC_REG_VS45, PPC_REG_VS46, PPC_REG_VS47,
 			PPC_REG_VS48, PPC_REG_VS49, PPC_REG_VS50, PPC_REG_VS51, PPC_REG_VS52, PPC_REG_VS53, PPC_REG_VS54, PPC_REG_VS55,
-			PPC_REG_VS56, PPC_REG_VS57, PPC_REG_VS58, PPC_REG_VS59, PPC_REG_VS60, PPC_REG_VS61, PPC_REG_VS62, PPC_REG_VS63
+			PPC_REG_VS56, PPC_REG_VS57, PPC_REG_VS58, PPC_REG_VS59, PPC_REG_VS60, PPC_REG_VS61, PPC_REG_VS62, PPC_REG_VS63,
+
+			/* defined outside of capstone */
+			PPC_REG_MSR
 		};
 
 		return result;
@@ -1722,6 +1731,7 @@ class PowerpcArchitecture: public Architecture
 			case PPC_REG_VS61: return RegisterInfo(PPC_REG_VS61, 0, 4);
 			case PPC_REG_VS62: return RegisterInfo(PPC_REG_VS62, 0, 4);
 			case PPC_REG_VS63: return RegisterInfo(PPC_REG_VS63, 0, 4);
+			case PPC_REG_MSR: return RegisterInfo(PPC_REG_MSR, 0, 4);
 			default:
 				LogError("%s(%d == \"%s\") invalid argument", __func__,
 				  regId, powerpc_reg_to_str(regId));
