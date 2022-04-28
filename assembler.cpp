@@ -2233,7 +2233,7 @@ struct token {
 	string sval;
 };
 
-int tokenize(string src, vector<token>& result, string& err)
+int tokenize(const string& src, vector<token>& result, string& err)
 {
 	int rc = -1, n=0;
 	char *endptr;
@@ -2766,7 +2766,7 @@ bool fmt_match(string fmt, string str, vector<string>& result)
 /*****************************************************************************/
 
 #define FAILURES_LIMIT 10000
-int assemble_single(string src, uint32_t addr, uint8_t *result, string& err,
+int assemble_single(const string& src, uint32_t addr, uint8_t *result, string& err,
   int& failures)
 {
 	int rc = -1;
