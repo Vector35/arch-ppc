@@ -2495,14 +2495,7 @@ extern "C"
 
 		/* function recognizer */
 		ppc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
-		ppc->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
-		ppc->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
-		ppc->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
-
 		ppc_le->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
-		ppc_le->SetBinaryViewTypeConstant("ELF", "R_COPY", 19);
-		ppc_le->SetBinaryViewTypeConstant("ELF", "R_GLOBAL_DATA", 20);
-		ppc_le->SetBinaryViewTypeConstant("ELF", "R_JUMP_SLOT", 21);
 
 		ppc->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_le->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
