@@ -504,13 +504,13 @@ class PowerpcArchitecture: public Architecture
 		if (tmp==0xFC000040 || tmp==0xFC000040) {
 			result.emplace_back(TextToken, tmp==0xFC000040 ? "fcmpo":"fcmpu");
 			result.emplace_back(TextToken, "   ");
-			sprintf(buf, "cr%d", (insword >> 23) & 7);
+			snprintf(buf, sizeof(buf), "cr%d", (insword >> 23) & 7);
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "f%d", (insword >> 16) & 31);
+			snprintf(buf, sizeof(buf), "f%d", (insword >> 16) & 31);
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "f%d", (insword >> 11) & 31);
+			snprintf(buf, sizeof(buf), "f%d", (insword >> 11) & 31);
 			result.emplace_back(RegisterToken, buf);
 			return true;
 		}
@@ -522,13 +522,13 @@ class PowerpcArchitecture: public Architecture
 			int c = ((insword & 0xF800)>>11)|((insword & 0x2)<<4);
 			result.emplace_back(TextToken, "xxpermr");
 			result.emplace_back(TextToken, " ");
-			sprintf(buf, "vs%d", a);
+			snprintf(buf, sizeof(buf), "vs%d", a);
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "vs%d", b);
+			snprintf(buf, sizeof(buf), "vs%d", b);
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "vs%d", c);
+			snprintf(buf, sizeof(buf), "vs%d", c);
 			result.emplace_back(RegisterToken, buf);
 			return true;
 		}
@@ -554,21 +554,21 @@ class PowerpcArchitecture: public Architecture
 					result.emplace_back(TextToken, " ");
 					break;
 			}
-			sprintf(buf, "f%d", (insword & 0x3E00000)>>21);
+			snprintf(buf, sizeof(buf), "f%d", (insword & 0x3E00000) >> 21);
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "r%d", (insword & 0x1F0000)>>16);
+			snprintf(buf, sizeof(buf), "r%d", (insword & 0x1F0000) >> 16);
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "r%d", (insword & 0xF800)>>11);
+			snprintf(buf, sizeof(buf), "r%d", (insword & 0xF800) >> 11);
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
 			tmp = (insword & 0x400)>>10;
-			sprintf(buf, "%d", tmp);
+			snprintf(buf, sizeof(buf), "%d", tmp);
 			result.emplace_back(IntegerToken, buf, tmp, 1);
 			result.emplace_back(OperandSeparatorToken, ", ");
 			tmp = (insword & 0x380)>>7;
-			sprintf(buf, "%d", tmp);
+			snprintf(buf, sizeof(buf), "%d", tmp);
 			result.emplace_back(IntegerToken, buf, tmp, 1);
 			return true;
 		}
@@ -586,13 +586,13 @@ class PowerpcArchitecture: public Architecture
 				case 0x1000001B: result.emplace_back(TextToken, "ps_muls1."); break;
 			}
 			result.emplace_back(TextToken, " ");
-			sprintf(buf, "f%d", (insword & 0x3E00000)>>21);
+			snprintf(buf, sizeof(buf), "f%d", (insword & 0x3E00000) >> 21);
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "f%d", (insword & 0x1F0000)>>16);
+			snprintf(buf, sizeof(buf), "f%d", (insword & 0x1F0000) >> 16);
 			result.emplace_back(RegisterToken, buf);
 			result.emplace_back(OperandSeparatorToken, ", ");
-			sprintf(buf, "f%d", (insword & 0x7C0)>>6);
+			snprintf(buf, sizeof(buf), "f%d", (insword & 0x7C0) >> 6);
 			result.emplace_back(RegisterToken, buf);
 			return true;
 		}
@@ -680,7 +680,7 @@ class PowerpcArchitecture: public Architecture
 						case PPC_INS_BCL:
 						case PPC_INS_BL:
 						case PPC_INS_BLA:
-							sprintf(buf, "0x%x", op->imm);
+							snprintf(buf, sizeof(buf), "0x%x", op->imm);
 							result.emplace_back(CodeRelativeAddressToken, buf, (uint32_t) op->imm, 4);
 							break;
 						case PPC_INS_ADDIS:
@@ -688,21 +688,21 @@ class PowerpcArchitecture: public Architecture
 						case PPC_INS_ORIS:
 						case PPC_INS_XORIS:
 						case PPC_INS_ORI:
-							sprintf(buf, "0x%x", (uint16_t) op->imm);
+							snprintf(buf, sizeof(buf), "0x%x", (uint16_t)op->imm);
 							result.emplace_back(IntegerToken, buf, (uint16_t) op->imm, 4);
 							break;
 						default:
 							if (op->imm < 0 && op->imm > -0x10000)
-								sprintf(buf, "-0x%x", -op->imm);
+								snprintf(buf, sizeof(buf), "-0x%x", -op->imm);
 							else
-								sprintf(buf, "0x%x", op->imm);
+								snprintf(buf, sizeof(buf), "0x%x", op->imm);
 							result.emplace_back(IntegerToken, buf, op->imm, 4);
 					}
 
 					break;
 				case PPC_OP_MEM:
 					// eg: lwz r11, 8(r11)
-					sprintf(buf, "%d", op->mem.disp);
+					snprintf(buf, sizeof(buf), "%d", op->mem.disp);
 					result.emplace_back(IntegerToken, buf, op->mem.disp, 4);
 
 					result.emplace_back(TextToken, "(");
@@ -1756,9 +1756,9 @@ class PowerpcArchitecture: public Architecture
 		/* prepend directives to command the assembler's origin and endianness */
 		string src;
 		char buf[1024];
-		sprintf(buf, ".org %" PRIx64 "\n", addr);
+		snprintf(buf, sizeof(buf), ".org %" PRIx64 "\n", addr);
 		src += string(buf);
-		sprintf(buf, ".endian %s\n", (endian==BigEndian) ? "big":"little");
+		snprintf(buf, sizeof(buf), ".endian %s\n", (endian == BigEndian) ? "big" : "little");
 		src += string(buf);
 		src += code;
 

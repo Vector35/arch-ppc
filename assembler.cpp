@@ -2195,8 +2195,8 @@ int disasm_capstone(uint8_t *data, uint32_t addr, string& result, string& err)
 		}
 		else {
 			char msg[128];
-			sprintf(msg, "ERROR: cs_disasm() returned %zu cs_err=%d (%s)\n",
-				count, e, cs_err_to_string(e));
+			snprintf(
+				msg, sizeof(msg), "ERROR: cs_disasm() returned %zu cs_err=%d (%s)\n", count, e, cs_err_to_string(e));
 			err = msg;
 			goto cleanup;
 		}
@@ -3009,11 +3009,10 @@ int assemble_multiline(const string& code, vector<uint8_t>& result, string& err)
 					char buf[16];
 					int64_t value = symbols[token];
 					if(value < 0) {
-						buf[0]='-';
-						sprintf(buf+1, "0x%08X", (unsigned)(-1*value));
+						snprintf(buf, sizeof(buf), "-0x%08X", (unsigned)(-1 * value));
 					}
 					else {
-						sprintf(buf, "0x%08X", (unsigned)value);
+						snprintf(buf, sizeof(buf), "0x%08X", (unsigned)value);
 					}
 					line.replace(left, line.size()-left, buf);
 				}
