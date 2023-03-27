@@ -766,9 +766,39 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 
 		case PPC_INS_MFCR:
 			REQUIRE1OP
-			ei0 = il.Unimplemented();
-			ei0 = il.SetRegister(4, oper0->reg, ei0);
-			il.AddInstruction(ei0);
+			il.AddInstruction(il.SetRegister(4, oper1->reg - PPC_REG_R0,
+				il.Or(4, il.FlagBit(4, IL_FLAG_LT, 31),
+				il.Or(4, il.FlagBit(4, IL_FLAG_GT, 30),
+				il.Or(4, il.FlagBit(4, IL_FLAG_EQ, 29),
+				il.Or(4, il.FlagBit(4, IL_FLAG_SO, 28),
+				il.Or(4, il.FlagBit(4, IL_FLAG_LT_1, 27),
+				il.Or(4, il.FlagBit(4, IL_FLAG_GT_1, 26),
+				il.Or(4, il.FlagBit(4, IL_FLAG_EQ_1, 25),
+				il.Or(4, il.FlagBit(4, IL_FLAG_SO_1, 24),
+				il.Or(4, il.FlagBit(4, IL_FLAG_LT_2, 23),
+				il.Or(4, il.FlagBit(4, IL_FLAG_GT_2, 22),
+				il.Or(4, il.FlagBit(4, IL_FLAG_EQ_2, 21),
+				il.Or(4, il.FlagBit(4, IL_FLAG_SO_2, 20),
+				il.Or(4, il.FlagBit(4, IL_FLAG_LT_3, 19),
+				il.Or(4, il.FlagBit(4, IL_FLAG_GT_3, 18),
+				il.Or(4, il.FlagBit(4, IL_FLAG_EQ_3, 17),
+				il.Or(4, il.FlagBit(4, IL_FLAG_SO_3, 16),
+				il.Or(4, il.FlagBit(4, IL_FLAG_LT_4, 15),
+				il.Or(4, il.FlagBit(4, IL_FLAG_GT_4, 14),
+				il.Or(4, il.FlagBit(4, IL_FLAG_EQ_4, 13),
+				il.Or(4, il.FlagBit(4, IL_FLAG_SO_4, 12),
+				il.Or(4, il.FlagBit(4, IL_FLAG_LT_5, 11),
+				il.Or(4, il.FlagBit(4, IL_FLAG_GT_5, 10),
+				il.Or(4, il.FlagBit(4, IL_FLAG_EQ_5, 9),
+				il.Or(4, il.FlagBit(4, IL_FLAG_SO_5, 8),
+				il.Or(4, il.FlagBit(4, IL_FLAG_LT_6, 7),
+				il.Or(4, il.FlagBit(4, IL_FLAG_GT_6, 6),
+				il.Or(4, il.FlagBit(4, IL_FLAG_EQ_6, 5),
+				il.Or(4, il.FlagBit(4, IL_FLAG_SO_6, 4),
+				il.Or(4, il.FlagBit(4, IL_FLAG_LT_7, 3),
+				il.Or(4, il.FlagBit(4, IL_FLAG_GT_7, 2),
+				il.Or(4, il.FlagBit(4, IL_FLAG_EQ_7, 1),
+				il.FlagBit(4, IL_FLAG_SO_7, 0))))))))))))))))))))))))))))))))));
 			break;
 
 		case PPC_INS_MTCRF:
