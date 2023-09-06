@@ -1724,8 +1724,8 @@ class PowerpcArchitecture: public Architecture
 			case PPC_REG_VS62: return RegisterInfo(PPC_REG_VS62, 0, 4);
 			case PPC_REG_VS63: return RegisterInfo(PPC_REG_VS63, 0, 4);
 			default:
-				LogError("%s(%d == \"%s\") invalid argument", __func__,
-				  regId, powerpc_reg_to_str(regId));
+				//LogError("%s(%d == \"%s\") invalid argument", __func__,
+				//  regId, powerpc_reg_to_str(regId));
 				return RegisterInfo(0,0,0);
 		}
 	}
