@@ -45,8 +45,9 @@ set_target_properties(arch_ppc PROPERTIES
     VISIBILITY_INLINES_HIDDEN ON
 	POSITION_INDEPENDENT_CODE ON)
 
+target_include_directories(arch_ppc PRIVATE ${PROJECT_SOURCE_DIR}/capstone/include)
+
 if(BN_INTERNAL_BUILD)
-	target_include_directories(arch_ppc PRIVATE ${PROJECT_SOURCE_DIR}/capstone/include)
 	plugin_rpath(arch_ppc)
 	set_target_properties(arch_ppc PROPERTIES
 		LIBRARY_OUTPUT_DIRECTORY ${BN_CORE_PLUGIN_DIR}
