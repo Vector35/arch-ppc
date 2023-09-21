@@ -766,7 +766,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 
 		case PPC_INS_MFCR:
 			REQUIRE1OP
-			il.AddInstruction(il.SetRegister(4, oper1->reg - PPC_REG_R0,
+			il.AddInstruction(il.SetRegister(4, oper0->reg,
 				il.Or(4, il.FlagBit(4, IL_FLAG_LT, 31),
 				il.Or(4, il.FlagBit(4, IL_FLAG_GT, 30),
 				il.Or(4, il.FlagBit(4, IL_FLAG_EQ, 29),
