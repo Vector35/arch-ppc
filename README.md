@@ -45,6 +45,32 @@ option in the Binary Ninja UI).
 be overwritten every time there is a Binary Ninja update. Use the above process to ensure that
 updates do not automatically uninstall your custom build.**
 
+## Testing
+
+- [./test_lifting.py](./test_lifting.py) runs a very basic "lift to string and compare" test
+
+Personal Binary Ninja users can test via the built in console:
+
+```
+>>> sys.path.append('C:/users/x/documents/binja/ppc-capstone') # Path directory containing test_lifting.py
+>>> from importlib import reload
+>>> import test_lifting
+success!
+>>> # Add or fix any testcases
+>>> reload(test_lifting)
+success!
+```
+
+And, of course, you can open a test binary in Binary Ninja with this architecture built and activated to see if results are as expected.
+
+## Requirements for Pull Requesters
+
+1. **TEST!** If you're making an architecture or lifter change, add a test case to [test_lifting.py](./test_lifting.p) that fails before your change and succeeds after your change.
+
+Please follow whatever formatting conventions are present in the file you edit. Pay attention to curly brackets, spacing, tabs vs. spaces, etc.
+
+When you submit your first PR to one of Vector 35's repositories, you'll receive a notice from [CLA Assistant](https://cla-assistant.io/) that allows you to sign our [Contribution License Agreement](https://binary.ninja/cla.pdf) online.
+
 ## License
 
 This code MIT licensed, see [LICENSE.txt](./license.txt).
