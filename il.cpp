@@ -463,6 +463,19 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 	struct cs_detail *detail = &(res->detail);
 	struct cs_ppc *ppc = &(detail->ppc);
 
+	/* There is a simplifying reduction available for:
+	 *   rlwinm <reg>, <reg>, <rol_amt>, <mask_begin>, <mask_end>
+	 * When <rol_amt> == <mask_begin> == 0, this can be translated to:
+	 *   clrwi <reg>, <reg>, 31-<mask_end>
+	 *
+	 * Unfortunately capstone screws this up, replacing just the instruction id with PPC_INSN_CLRWI.
+	 * The mnemonic ("rlwinm"), operands, etc. all stay the same.
+	 */
+	if (insn->id == PPC_INS_CLRLWI && insn->mnemonic[0] == 'r')
+	{
+		insn->id = PPC_INS_RLWINM;
+	}
+
 	/* create convenient access to instruction operands */
 	cs_ppc_op *oper0=NULL, *oper1=NULL, *oper2=NULL, *oper3=NULL, *oper4=NULL;
 	#define REQUIRE1OP if(!oper0) goto ReturnUnimpl;
@@ -633,6 +646,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			il.AddInstruction(ei0);
 			break;
 
+		case PPC_INS_CMP:
 		case PPC_INS_CMPW: /* compare (signed) word(32-bit) */
 			REQUIRE2OPS
 			ei0 = operToIL(il, oper2 ? oper1 : oper0);
@@ -641,6 +655,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			il.AddInstruction(ei2);
 			break;
 
+		case PPC_INS_CMPL:
 		case PPC_INS_CMPLW: /* compare logical(unsigned) word(32-bit) */
 			REQUIRE2OPS
 			ei0 = operToIL(il, oper2 ? oper1 : oper0);
@@ -649,6 +664,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			il.AddInstruction(ei2);
 			break;
 
+		case PPC_INS_CMPI:
 		case PPC_INS_CMPWI: /* compare (signed) word(32-bit) immediate */
 			REQUIRE2OPS
 			ei0 = operToIL(il, oper2 ? oper1 : oper0);
@@ -657,6 +673,7 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 			il.AddInstruction(ei2);
 			break;
 
+		case PPC_INS_CMPLI:
 		case PPC_INS_CMPLWI: /* compare logical(unsigned) word(32-bit) immediate */
 			REQUIRE2OPS
 			ei0 = operToIL(il, oper2 ? oper1 : oper0);

@@ -32,7 +32,7 @@ option(CAPSTONE_BUILD_SHARED "Build shared library" OFF)
 option(CAPSTONE_BUILD_TESTS "Build tests" OFF)
 add_subdirectory(capstone)
 
-target_link_libraries(arch_ppc binaryninjaapi capstone-static)
+target_link_libraries(arch_ppc binaryninjaapi capstone)
 
 if(UNIX AND NOT APPLE)
 	target_link_options(arch_ppc PRIVATE "LINKER:--exclude-libs,ALL")

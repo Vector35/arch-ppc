@@ -19,7 +19,7 @@
 using namespace std;
 
 /* capstone stuff */
-#include "capstone.h"
+#include "capstone/capstone.h"
 
 //#define MYLOG printf
 #define MYLOG(...) while(0);

@@ -22,8 +22,8 @@ Then some helpers if you need them:
 ******************************************************************************/
 
 /* capstone stuff /usr/local/include/capstone */
-#include "capstone.h"
-#include "ppc.h"
+#include "capstone/capstone.h"
+#include "capstone/ppc.h"
 
 //*****************************************************************************
 // structs and types
