@@ -460,9 +460,8 @@ class PowerpcArchitecture: public Architecture
 			insword = bswap32(insword);
 
 		// 111111xxx00xxxxxxxxxx00001000000 <- fcmpo
-		// 111111xxx00xxxxxxxxxx00000000000 <- fcmpu
 		uint32_t tmp = insword & 0xFC6007FF;
-		if (tmp==0xFC000040 || tmp==0xFC000000)
+		if (tmp==0xFC000040)
 			return true;
 		// 111100xxxxxxxxxxxxxxx00111010xxx <- xxpermr
 		if((insword & 0xFC0007F8) == 0xF00001D0)
@@ -499,10 +498,9 @@ class PowerpcArchitecture: public Architecture
 		char buf[16];
 
 		// 111111AAA00BBBBBCCCCC00001000000 "fcmpo crA,fB,fC"
-		// 111111AAA00BBBBBCCCCC00000000000 "fcmpu crA,fB,fC"
 		uint32_t tmp = insword & 0xFC6007FF;
-		if (tmp==0xFC000040 || tmp==0xFC000040) {
-			result.emplace_back(TextToken, tmp==0xFC000040 ? "fcmpo":"fcmpu");
+		if (tmp==0xFC000040) {
+			result.emplace_back(TextToken, "fcmpo");
 			result.emplace_back(TextToken, "   ");
 			snprintf(buf, sizeof(buf), "cr%d", (insword >> 23) & 7);
 			result.emplace_back(RegisterToken, buf);

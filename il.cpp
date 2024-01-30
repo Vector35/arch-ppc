@@ -714,11 +714,11 @@ bool GetLowLevelILForPPCInstruction(Architecture *arch, LowLevelILFunction &il,
 	//	il.AddInstruction(ei2);
 	//	break;
 
-		case PPC_INS_FCMPU:
-			REQUIRE3OPS
-			ei0 = il.FloatSub(4, il.Unimplemented(), il.Unimplemented(), (oper0->reg - PPC_REG_CR0) + IL_FLAGWRITE_INVL0);
-			il.AddInstruction(ei0);
-			break;
+	//	case PPC_INS_FCMPU:
+	//		REQUIRE3OPS
+	//		ei0 = il.FloatSub(4, il.Unimplemented(), il.Unimplemented(), (oper0->reg - PPC_REG_CR0) + IL_FLAGWRITE_INVL0);
+	//		il.AddInstruction(ei0);
+	//		break;
 
 		case PPC_INS_CRAND:
 		case PPC_INS_CRANDC:
