@@ -12,13 +12,7 @@ Issues for this repository have been disabled. Please file an issue for this rep
 * use of the genetic algorithm for assembling (oracle: capstone)
 * proper lifting
 
-Note that assembler.cpp and test_asm.cpp are isolated, in that they do not include any binja headers or link against any binja libs. This allows quick command line compilation, debugging, and testing:
-
-`g++ -std=c++11 -O0 -g test_asm.cpp assembler.cpp -o test_asm -lcapstone`
-
-A similar situation exists for disassembler.cpp and test_disasm.cpp:
-
-`g++ -std=c++11 -O0 -g test_disasm.cpp disassembler.cpp -o test_disasm -lcapstone`
+Note that assembler.cpp and test_asm.cpp are isolated, in that they do not include any binja headers or link against any binja libs. This allows quick command line compilation, debugging, and testing. See the comments atop `test_disasm.cpp` and `test_asm.cpp` for compilation instructions.
 
 ## Building
 
@@ -31,8 +25,13 @@ Steps:
 
 2. Run `git submodule update --init --recursive` to download the capstone source code fixed at a particular commit.
 
-3. Generate makefiles with `cmake`. This can be done either from a separate build directory or from the source
-directory.
+3. Generate makefiles with `cmake`. This can be done either from a separate build directory or from the source directory, eg:
+
+  ```
+  $ mkdir build_debug
+  $ cmake -S . -B build_debug -DCMAKE_BUILD_TYPE=Debug
+  $ cmake --build ./build
+  ```
 
 4. Run `make` to compile the plugin.
 

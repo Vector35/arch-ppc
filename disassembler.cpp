@@ -7,8 +7,8 @@ architecture plugin picture.
 
 #include <string.h> // strcpy, etc.
 
-#include <binaryninjaapi.h>
 #define MYLOG(...) while(0);
+//#include <binaryninjaapi.h>
 //#define MYLOG BinaryNinja::LogDebug
 
 #include "disassembler.h"
@@ -156,8 +156,7 @@ extern "C" int
 powerpc_disassemble(struct decomp_result *res, char *buf, size_t len)
 {
 	/* ideally the "heavy" string disassemble result is derived from light data
-		in the decomposition result, but capstone doesn't make this distinction
-		so it's included it so we make use of it for now */
+		in the decomposition result, but capstone doesn't make this distinction */
 	int rc = -1;
 
 	if(len < strlen(res->insn.mnemonic)+strlen(res->insn.op_str) + 2) {

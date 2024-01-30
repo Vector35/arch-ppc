@@ -1,7 +1,7 @@
 /* this is meant to be linked up against assembler.cpp for stress test and
 	benchmarking
 
-g++ -std=c++11 -O0 -g test_asm.cpp assembler.cpp -o test_asm -lcapstone
+g++ -std=c++11 -O0 -g -I capstone/include -L./build/capstone test_asm.cpp assembler.cpp -o test_asm -lcapstone
 
 */
 

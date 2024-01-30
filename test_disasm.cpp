@@ -6,7 +6,7 @@ Provide command line arguments for different cool tests.
 Like `./test repl` to get an interactive disassembler
 Like `./test speed` to get a timed test of instruction decomposition
 
-g++ -std=c++11 -O0 -g test_disasm.cpp disassembler.cpp -o test_disasm -lcapstone
+g++ -std=c++11 -O0 -g -I capstone/include -L./build/capstone test_disasm.cpp disassembler.cpp -o test_disasm -lcapstone
 
 ******************************************************************************/
 
