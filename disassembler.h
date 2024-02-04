@@ -59,11 +59,11 @@ struct decomp_result
 //*****************************************************************************
 // function prototypes
 //*****************************************************************************
-extern "C" int powerpc_init(void);
+extern "C" int powerpc_init(int);
 extern "C" void powerpc_release(void);
 extern "C" int powerpc_decompose(const uint8_t *data, int size, uint32_t addr, 
-	bool lil_end, struct decomp_result *result);
+	bool lil_end, struct decomp_result *result, int);
 extern "C" int powerpc_disassemble(struct decomp_result *, char *buf, size_t len);
 
-extern "C" const char *powerpc_reg_to_str(uint32_t rid);
+extern "C" const char *powerpc_reg_to_str(uint32_t rid, int);
 

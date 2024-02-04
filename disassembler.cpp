@@ -19,7 +19,7 @@ thread_local csh handle_lil = 0;
 thread_local csh handle_big = 0;
 
 extern "C" int
-powerpc_init(void)
+powerpc_init(int CS_MODE_ARG)
 {
 	int rc = -1;
 
@@ -31,12 +31,12 @@ powerpc_init(void)
 	}
 
 	/* initialize capstone handle */
-	if(cs_open(CS_ARCH_PPC, CS_MODE_BIG_ENDIAN, &handle_big) != CS_ERR_OK) {
+	if(cs_open(CS_ARCH_PPC, (cs_mode)((int)CS_MODE_BIG_ENDIAN | CS_MODE_ARG), &handle_big) != CS_ERR_OK) {
 		MYLOG("ERROR: cs_open()\n");
 		goto cleanup;
 	}
 
-	if(cs_open(CS_ARCH_PPC, CS_MODE_LITTLE_ENDIAN, &handle_lil) != CS_ERR_OK) {
+	if(cs_open(CS_ARCH_PPC, (cs_mode)((int)CS_MODE_LITTLE_ENDIAN | CS_MODE_ARG), &handle_lil) != CS_ERR_OK) {
 		MYLOG("ERROR: cs_open()\n");
 		goto cleanup;
 	}
@@ -69,13 +69,13 @@ powerpc_release(void)
 
 extern "C" int
 powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
-	struct decomp_result *res)
+	struct decomp_result *res, int CS_MODE_ARG)
 {
 	int rc = -1;
 	res->status = STATUS_ERROR_UNSPEC;
 
 	if(!handle_lil) {
-		powerpc_init();
+		powerpc_init(CS_MODE_ARG);
 	}
 
 	//typedef struct cs_insn {
@@ -174,10 +174,10 @@ powerpc_disassemble(struct decomp_result *res, char *buf, size_t len)
 }
 
 extern "C" const char *
-powerpc_reg_to_str(uint32_t rid)
+powerpc_reg_to_str(uint32_t rid, int CS_MODE_ARG)
 {
 	if(!handle_lil) {
-		powerpc_init();
+		powerpc_init(CS_MODE_ARG);
 	}
 
 	return cs_reg_name(handle_lil, rid);
