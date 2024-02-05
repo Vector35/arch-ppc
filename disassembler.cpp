@@ -120,6 +120,7 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	// } cs_ppc_op;
 
 	csh handle;
+	struct cs_struct *hand_tmp = 0;
 	cs_insn *insn = 0; /* instruction information
 					cs_disasm() will allocate array of cs_insn here */
 
@@ -128,6 +129,9 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	handle = handle_big;
 	if(lil_end) handle = handle_lil;
 	res->handle = handle;
+
+	hand_tmp = (struct cs_struct *)handle;
+	hand_tmp->mode = (cs_mode)((int)hand_tmp->mode | CS_MODE_ARG);
 
 	/* call */
 	size_t n = cs_disasm(handle, data, size, addr, 1, &insn);

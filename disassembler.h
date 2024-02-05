@@ -23,6 +23,7 @@ Then some helpers if you need them:
 
 /* capstone stuff /usr/local/include/capstone */
 #include "capstone/capstone.h"
+#include "capstone/cs_priv.h"
 #include "capstone/ppc.h"
 
 //*****************************************************************************
