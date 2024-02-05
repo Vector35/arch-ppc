@@ -17,6 +17,8 @@ g++ -std=c++11 -O0 -g -I capstone/include -L./build/capstone test_disasm.cpp dis
 
 #if defined(_WIN32)
 #include <winpos.h>
+#else
+#include <unistd.h>
 #endif
 
 #include "disassembler.h"
