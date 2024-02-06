@@ -10,7 +10,7 @@ precisely to make swapping out disassemblers easy, because disassembler details
 Also, with the disassembler object separate, we can link it against
 easy-to-compile test harnesses like the speed test.
 
-There are three main functions:
+There are four main functions:
 
 powerpc_init() - initializes this module
 powerpc_release() - un-initializes this module
@@ -29,10 +29,15 @@ Then some helpers if you need them:
 //*****************************************************************************
 // structs and types
 //*****************************************************************************
+enum disasm_mode {
+	DISASM_MODE_LITTLE=0,
+	DISASM_MODE_BIG=1,
+	DISASM_MODE_BIG_PAIRED_SINGLES=2
+};
+
 enum ppc_status_t {
     STATUS_ERROR_UNSPEC=-1, STATUS_SUCCESS=0, STATUS_UNDEF_INSTR
 };
-
 
 /* operand type */
 enum operand_type_t { REG, VAL, LABEL };
@@ -60,11 +65,11 @@ struct decomp_result
 //*****************************************************************************
 // function prototypes
 //*****************************************************************************
-extern "C" int powerpc_init(int);
+extern "C" int powerpc_init(void);
 extern "C" void powerpc_release(void);
 extern "C" int powerpc_decompose(const uint8_t *data, int size, uint32_t addr, 
-	bool lil_end, struct decomp_result *result, int);
+	struct decomp_result *result, enum disasm_mode);
 extern "C" int powerpc_disassemble(struct decomp_result *, char *buf, size_t len);
 
-extern "C" const char *powerpc_reg_to_str(uint32_t rid, int);
+extern "C" const char *powerpc_reg_to_str(uint32_t rid, enum disasm_mode);
 

@@ -30,7 +30,7 @@ Steps:
   ```
   $ mkdir build_debug
   $ cmake -S . -B build_debug -DCMAKE_BUILD_TYPE=Debug
-  $ cmake --build ./build
+  $ cmake --build ./build_debug
   ```
 
 4. Run `make` to compile the plugin.

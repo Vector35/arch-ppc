@@ -8,6 +8,7 @@ architecture plugin picture.
 #include <string.h> // strcpy, etc.
 
 #define MYLOG(...) while(0);
+//#define MYLOG printf
 //#include <binaryninjaapi.h>
 //#define MYLOG BinaryNinja::LogDebug
 
@@ -15,41 +16,49 @@ architecture plugin picture.
 
 /* have to do this... while options can be toggled after initialization (thru
 	cs_option(), the modes cannot, and endianness is considered a mode) */
-thread_local csh handle_lil = 0;
-thread_local csh handle_big = 0;
+thread_local csh handle_lil = 0; /* for little endian */
+thread_local csh handle_big = 0; /* for big endian */
+thread_local csh handle_big_ps = 0; /* for big endian and paired singles */
 
 extern "C" int
-powerpc_init(int CS_MODE_ARG)
+powerpc_init()
 {
 	int rc = -1;
 
 	MYLOG("powerpc_init()\n");
 
-	if(handle_lil || handle_big) {
+	if(handle_lil && handle_big && handle_big_ps) {
 		MYLOG("ERROR: already initialized!\n");
 		goto cleanup;
 	}
 
-	/* initialize capstone handle */
-	if(cs_open(CS_ARCH_PPC, (cs_mode)((int)CS_MODE_BIG_ENDIAN | CS_MODE_ARG), &handle_big) != CS_ERR_OK) {
+	/* initialize capstone handles */
+	if(cs_open(CS_ARCH_PPC, CS_MODE_BIG_ENDIAN, &handle_big) != CS_ERR_OK) {
 		MYLOG("ERROR: cs_open()\n");
 		goto cleanup;
 	}
 
-	if(cs_open(CS_ARCH_PPC, (cs_mode)((int)CS_MODE_LITTLE_ENDIAN | CS_MODE_ARG), &handle_lil) != CS_ERR_OK) {
+	if(cs_open(CS_ARCH_PPC, (cs_mode)(CS_MODE_BIG_ENDIAN|CS_MODE_PS), &handle_big_ps) != CS_ERR_OK) {
 		MYLOG("ERROR: cs_open()\n");
+		goto cleanup;
+	}
+
+	if(cs_open(CS_ARCH_PPC, CS_MODE_LITTLE_ENDIAN, &handle_lil) != CS_ERR_OK) {
+		MYLOG("ERROR: cs_open()\n");
+		goto cleanup;
+	}
+
+	if(handle_lil == 0 || handle_big == 0 || handle_big_ps == 0) {
+		MYLOG("ERROR: cs_open() created at least one NULL handle\n");
 		goto cleanup;
 	}
 
 	cs_option(handle_big, CS_OPT_DETAIL, CS_OPT_ON);
+	cs_option(handle_big_ps, CS_OPT_DETAIL, CS_OPT_ON);
 	cs_option(handle_lil, CS_OPT_DETAIL, CS_OPT_ON);
 
 	rc = 0;
 	cleanup:
-	if(rc) {
-		powerpc_release();
-	}
-
 	return rc;
 }
 
@@ -65,18 +74,39 @@ powerpc_release(void)
 		cs_close(&handle_big);
 		handle_big = 0;
 	}
+
+	if(handle_big_ps) {
+		cs_close(&handle_big_ps);
+		handle_big_ps = 0;
+	}
+}
+
+static csh
+disasm_mode_to_cs_handle(enum disasm_mode mode)
+{
+	switch (mode)
+	{
+		case DISASM_MODE_BIG:
+			MYLOG("returning handle_big==0x%X\n", (unsigned int)handle_big);
+			return handle_big;
+		case DISASM_MODE_LITTLE:
+			MYLOG("returning handle_little==0x%X\n", (unsigned int)handle_lil);
+			return handle_lil;
+		case DISASM_MODE_BIG_PAIRED_SINGLES:
+			MYLOG("returning handle_big_ps==0x%X\n", (unsigned int)handle_big_ps);
+			return handle_big_ps;
+		default:
+			MYLOG("ERROR: disasm_mode_to_cs_handle() cannot recognize mode 0x%X\n", mode);
+			return (csh)-1;
+	}
 }
 
 extern "C" int
-powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
-	struct decomp_result *res, int CS_MODE_ARG)
+powerpc_decompose(const uint8_t *data, int size, uint32_t addr,
+	struct decomp_result *res, enum disasm_mode mode)
 {
 	int rc = -1;
 	res->status = STATUS_ERROR_UNSPEC;
-
-	if(!handle_lil) {
-		powerpc_init(CS_MODE_ARG);
-	}
 
 	//typedef struct cs_insn {
 	//	unsigned int id; /* see capstone/ppc.h for PPC_INS_ADD, etc. */
@@ -119,29 +149,25 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	//   };
 	// } cs_ppc_op;
 
-	csh handle;
-	struct cs_struct *hand_tmp = 0;
 	cs_insn *insn = 0; /* instruction information
 					cs_disasm() will allocate array of cs_insn here */
 
-	/* which handle to use?
-		BIG end or LITTLE end? */
-	handle = handle_big;
-	if(lil_end) handle = handle_lil;
-	res->handle = handle;
-
-	hand_tmp = (struct cs_struct *)handle;
-	hand_tmp->mode = (cs_mode)((int)hand_tmp->mode | CS_MODE_ARG);
+	/* decide which capstone handle to use */
+	csh handle = disasm_mode_to_cs_handle(mode);
+	if (handle == (csh)-1) {
+		MYLOG("ERROR: disasm_mode_to_cs_handle() returned -1\n");
+		goto cleanup;
+	}
 
 	/* call */
-	size_t n = cs_disasm(handle, data, size, addr, 1, &insn);
-	if(n != 1) {
-		MYLOG("ERROR: cs_disasm() returned %" PRIdPTR " (cs_errno:%d)\n", n, cs_errno(handle));
+	if(cs_disasm(handle, data, size, addr, 1, &insn) != 1) {
+		MYLOG("ERROR: cs_disasm() failed (cs_errno:%d)\n", cs_errno(handle));
 		goto cleanup;
 	}
 
 	/* set the status */
 	res->status = STATUS_SUCCESS;
+	res->handle = handle;
 
 	/* copy the instruction struct, and detail sub struct to result */
 	memcpy(&(res->insn), insn, sizeof(cs_insn));
@@ -178,12 +204,15 @@ powerpc_disassemble(struct decomp_result *res, char *buf, size_t len)
 }
 
 extern "C" const char *
-powerpc_reg_to_str(uint32_t rid, int CS_MODE_ARG)
+powerpc_reg_to_str(uint32_t rid, enum disasm_mode mode)
 {
-	if(!handle_lil) {
-		powerpc_init(CS_MODE_ARG);
-	}
+	powerpc_init();
+	MYLOG("%s(%d, %d)\n", __func__, rid, mode);
 
-	return cs_reg_name(handle_lil, rid);
+	csh handle = disasm_mode_to_cs_handle(mode);
+	if (handle == (csh)-1)
+		return "(ERROR)";
+
+	MYLOG("%s(%d, %d) returns %s\n", __func__, rid, mode, cs_reg_name(handle, rid));
+	return cs_reg_name(handle, rid);
 }
-

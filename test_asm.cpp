@@ -1,7 +1,10 @@
 /* this is meant to be linked up against assembler.cpp for stress test and
 	benchmarking
 
-g++ -std=c++11 -O0 -g -I capstone/include -L./build/capstone test_asm.cpp assembler.cpp -o test_asm -lcapstone
+You must point the library directory to where capstone was built:
+
+g++ -std=c++11 -O0 -g -I capstone/include -L./build_debug/capstone test_asm.cpp assembler.cpp -o test_asm -lcapstone
+g++ -std=c++11 -O0 -g -I capstone/include -L./build_release/capstone test_asm.cpp assembler.cpp -o test_asm -lcapstone
 
 */
 

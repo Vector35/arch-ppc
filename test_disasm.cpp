@@ -6,7 +6,8 @@ Provide command line arguments for different cool tests.
 Like `./test repl` to get an interactive disassembler
 Like `./test speed` to get a timed test of instruction decomposition
 
-g++ -std=c++11 -O0 -g -I capstone/include -L./build/capstone test_disasm.cpp disassembler.cpp -o test_disasm -lcapstone
+g++ -std=c++11 -O0 -g -I capstone/include -L./build_debug/capstone test_disasm.cpp disassembler.cpp -o test_disasm -lcapstone
+g++ -std=c++11 -O0 -g -I capstone/include -L./build_release/capstone test_disasm.cpp disassembler.cpp -o test_disasm -lcapstone
 
 ******************************************************************************/
 
@@ -24,9 +25,8 @@ g++ -std=c++11 -O0 -g -I capstone/include -L./build/capstone test_disasm.cpp dis
 #include "disassembler.h"
 
 int print_errors = 1;
-int CS_MODE_LOCAL = 0;
 
-int disas_instr_word(uint32_t instr_word, char *buf)
+int disas_instr_word(uint32_t instr_word, char *buf, enum disasm_mode mode)
 {
 	int rc = -1;
 
@@ -35,7 +35,7 @@ int disas_instr_word(uint32_t instr_word, char *buf)
 	struct cs_detail *detail = &(res.detail);
 	struct cs_ppc *ppc = &(detail->ppc);
 
-	if(powerpc_decompose((const uint8_t *)&instr_word, 4, 0, true, &res, CS_MODE_LOCAL)) {
+	if(powerpc_decompose((const uint8_t *)&instr_word, 4, 0, &res, mode)) {
 		if(print_errors) printf("ERROR: powerpc_decompose()\n");
 		goto cleanup;
 	}
@@ -86,7 +86,7 @@ int disas_instr_word(uint32_t instr_word, char *buf)
 					printf("reg: %s\n", cs_reg_name(res.handle, op.reg));
 					break;
 				case PPC_OP_IMM:
-					printf("imm: 0x%X\n", op.imm);
+					printf("imm: 0x%llX\n", op.imm);
 					break;
 				case PPC_OP_MEM:
 					printf("mem (%s + %d)\n", cs_reg_name(res.handle, op.mem.base),
@@ -125,6 +125,7 @@ int main(int ac, char **av)
 	int index;
 	char* disasm_cmd = 0;
 	int c;
+	enum disasm_mode mode = DISASM_MODE_BIG;
 
 #define BATCH 10000000
 	opterr = 0;
@@ -134,7 +135,7 @@ int main(int ac, char **av)
 		switch (c)
 		{
 		case 'p':
-			CS_MODE_LOCAL = CS_MODE_PS;
+			mode = DISASM_MODE_BIG_PAIRED_SINGLES;
 			break;
 		default:
 			usage();
@@ -150,7 +151,7 @@ int main(int ac, char **av)
 
 	disasm_cmd = av[optind];
 
-	powerpc_init(CS_MODE_LOCAL);
+	powerpc_init();
 
 	if(!strcasecmp(disasm_cmd, "repl")) {
 		printf("REPL mode!\n");
@@ -172,7 +173,7 @@ int main(int ac, char **av)
 			//printf("instruction word: %08X\n", instr_word);
 
 			/* convert to string */
-			if(disas_instr_word(instr_word, buf)) {
+			if(disas_instr_word(instr_word, buf, mode)) {
 				printf("ERROR: disas_instr_word()\n");
 				continue;
 			}
@@ -189,7 +190,7 @@ int main(int ac, char **av)
 			clock_t t0 = clock();
 
 			for(int i=0; i<BATCH; ++i) {
-				disas_instr_word(instr_word, buf);
+				disas_instr_word(instr_word, buf, mode);
 				//printf("%08X: %s\n", instr_word, buf);
 				instr_word++;
 			}
@@ -209,7 +210,7 @@ int main(int ac, char **av)
 			int ndisasms = 0;
 
 			for(int i=0; i<BATCH; ++i) {
-				if(disas_instr_word(instr_word, buf) == 0) {
+				if(disas_instr_word(instr_word, buf, mode) == 0) {
 					ndisasms++;
 				}
 				//printf("%08X: %s\n", instr_word, buf);

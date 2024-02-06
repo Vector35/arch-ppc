@@ -280,8 +280,7 @@ static const char* GetRelocationString(ElfPpcRelocationType relocType)
 class PowerpcArchitecture: public Architecture
 {
 	private:
-	BNEndianness endian;
-	int CS_MODE_LOCAL;
+	enum disasm_mode mode;
 
 	/* this can maybe be moved to the API later */
 	BNRegisterInfo RegisterInfo(uint32_t fullWidthReg, size_t offset, size_t size, bool zeroExtend = false)
@@ -296,18 +295,11 @@ class PowerpcArchitecture: public Architecture
 
 	public:
 
-	/* initialization list */
-	PowerpcArchitecture(const char* name, BNEndianness endian_): Architecture(name)
+	PowerpcArchitecture(const char* name, enum disasm_mode mode_): Architecture(name)
 	{
-		endian = endian_;
-		CS_MODE_LOCAL = 0;
-	}
+		mode = mode_;
 
-	/* initialization list */
-	PowerpcArchitecture(const char* name, BNEndianness endian_, int CS_MODE_): Architecture(name)
-	{
-		endian = endian_;
-		CS_MODE_LOCAL = CS_MODE_;
+		powerpc_init();
 	}
 
 	/*************************************************************************/
@@ -315,7 +307,15 @@ class PowerpcArchitecture: public Architecture
 	virtual BNEndianness GetEndianness() const override
 	{
 		//MYLOG("%s()\n", __func__);
-		return endian;
+		switch (mode) {
+			case DISASM_MODE_LITTLE:
+				return LittleEndian;
+			case DISASM_MODE_BIG:
+			case DISASM_MODE_BIG_PAIRED_SINGLES:
+				return BigEndian;
+			default:
+				MYLOG("%s() cannot determine endianness\n", __func__);
+		}
 	}
 
 	virtual size_t GetAddressSize() const override
@@ -369,14 +369,14 @@ class PowerpcArchitecture: public Architecture
 		}
 
 		/* decompose the instruction to get branch info */
-		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, CS_MODE_LOCAL)) {
+		if(powerpc_decompose(data, 4, (uint32_t)addr, &res, mode)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			return false;
 		}
 
 		uint32_t raw_insn = *(const uint32_t *) data;
 
-		if (endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			raw_insn = bswap32(raw_insn);
 
 		switch (raw_insn >> 26)
@@ -465,7 +465,7 @@ class PowerpcArchitecture: public Architecture
 	bool DoesQualifyForLocalDisassembly(const uint8_t *data)
 	{
 		uint32_t insword = *(uint32_t *)data;
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			insword = bswap32(insword);
 
 		// 111111xxx00xxxxxxxxxx00001000000 <- fcmpo
@@ -499,7 +499,7 @@ class PowerpcArchitecture: public Architecture
 
 		if (len < 4) return false;
 		uint32_t insword = *(uint32_t *)data;
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			insword = bswap32(insword);
 
 		len = 4;
@@ -631,7 +631,7 @@ class PowerpcArchitecture: public Architecture
 		if (DoesQualifyForLocalDisassembly(data))
 			return PerformLocalDisassembly(data, addr, len, result);
 
-		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, CS_MODE_LOCAL)) {
+		if(powerpc_decompose(data, 4, (uint32_t)addr, &res, mode)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			goto cleanup;
 		}
@@ -757,13 +757,13 @@ class PowerpcArchitecture: public Architecture
 			goto cleanup;
 		}
 
-		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, CS_MODE_LOCAL)) {
+		if(powerpc_decompose(data, 4, (uint32_t)addr, &res, mode)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			il.AddInstruction(il.Undefined());
 			goto cleanup;
 		}
 
-		rc = GetLowLevelILForPPCInstruction(this, il, data, addr, &res, endian == LittleEndian);
+		rc = GetLowLevelILForPPCInstruction(this, il, data, addr, &res, GetEndianness() == LittleEndian);
 		len = 4;
 
 		cleanup:
@@ -931,7 +931,7 @@ class PowerpcArchitecture: public Architecture
 
 	virtual string GetRegisterName(uint32_t regId) override
 	{
-		const char *result = powerpc_reg_to_str(regId, CS_MODE_LOCAL);
+		const char *result = powerpc_reg_to_str(regId, mode);
 
 		if(result == NULL)
 			result = "";
@@ -1765,7 +1765,7 @@ class PowerpcArchitecture: public Architecture
 		char buf[1024];
 		snprintf(buf, sizeof(buf), ".org %" PRIx64 "\n", addr);
 		src += string(buf);
-		snprintf(buf, sizeof(buf), ".endian %s\n", (endian == BigEndian) ? "big" : "little");
+		snprintf(buf, sizeof(buf), ".endian %s\n", (mode == DISASM_MODE_LITTLE) ? "little":"big");
 		src += string(buf);
 		src += code;
 
@@ -1807,7 +1807,7 @@ class PowerpcArchitecture: public Architecture
 		}
 
 		uint32_t iw = *(uint32_t *)data;
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			iw = bswap32(iw);
 
 		MYLOG("analyzing instruction word: 0x%08X\n", iw);
@@ -1847,7 +1847,7 @@ class PowerpcArchitecture: public Architecture
 		}
 
 		uint32_t iw = *(uint32_t *)data;
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			iw = bswap32(iw);
 
 		MYLOG("analyzing instruction word: 0x%08X\n", iw);
@@ -1881,7 +1881,7 @@ class PowerpcArchitecture: public Architecture
 		MYLOG("%s()\n", __func__);
 
 		uint32_t iw = *(uint32_t *)data;
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			iw = bswap32(iw);
 
 		MYLOG("analyzing instruction word: 0x%08X\n", iw);
@@ -1920,7 +1920,7 @@ class PowerpcArchitecture: public Architecture
 
 		MYLOG("%s()\n", __func__);
 		uint32_t nop;
-		if(endian == LittleEndian)
+		if (GetEndianness() == BigEndian)
 			nop = 0x60000000;
 		else
 			nop = 0x00000060;
@@ -1940,7 +1940,7 @@ class PowerpcArchitecture: public Architecture
 
 		uint32_t iwAfter = 0;
 		uint32_t iwBefore = *(uint32_t *)data;
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			iwBefore = bswap32(iwBefore);
 
 		if((iwBefore & 0xfc000000) == 0x40000000) { /* BXX B-form */
@@ -1968,7 +1968,7 @@ class PowerpcArchitecture: public Architecture
 			return false;
 		}
 
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			iwAfter = bswap32(iwAfter);
 		*(uint32_t *)data = iwAfter;
 		return true;
@@ -1987,7 +1987,7 @@ class PowerpcArchitecture: public Architecture
 		}
 
 		uint32_t iw = *(uint32_t *)data;
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			iw = bswap32(iw);
 
 		MYLOG("analyzing instruction word: 0x%08X\n", iw);
@@ -2005,7 +2005,7 @@ class PowerpcArchitecture: public Architecture
 		iw ^= 0x1000000;
 
 		/* success */
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			iw = bswap32(iw);
 		*(uint32_t *)data = iw;
 		return true;
@@ -2026,7 +2026,7 @@ class PowerpcArchitecture: public Architecture
 		uint32_t iw = 0x38600000 | (value & 0xFFFF); // li (load immediate)
 
 		/* success */
-		if(endian == BigEndian)
+		if (GetEndianness() == BigEndian)
 			iw = bswap32(iw);
 		*(uint32_t *)data = iw;
 		return true;
@@ -2477,19 +2477,19 @@ extern "C"
 		MYLOG("ARCH POWERPC compiled at %s %s\n", __DATE__, __TIME__);
 
 		/* create, register arch in global list of available architectures */
-		Architecture* ppc = new PowerpcArchitecture("ppc", BigEndian);
+		Architecture* ppc = new PowerpcArchitecture("ppc", DISASM_MODE_BIG);
 		Architecture::Register(ppc);
 
-		Architecture* ppc_ps = new PowerpcArchitecture("ppc_ps", BigEndian, CS_MODE_PS);
-		Architecture::Register(ppc_ps);
+//		Architecture* ppc_ps = new PowerpcArchitecture("ppc_ps", DISASM_MODE_BIG_PAIRED_SINGLES);
+//		Architecture::Register(ppc_ps);
 
-		Architecture* ppc64 = new PowerpcArchitecture("ppc64", BigEndian);
+		Architecture* ppc64 = new PowerpcArchitecture("ppc64", DISASM_MODE_BIG);
 		Architecture::Register(ppc64);
 
-		Architecture* ppc_le = new PowerpcArchitecture("ppc_le", LittleEndian);
+		Architecture* ppc_le = new PowerpcArchitecture("ppc_le", DISASM_MODE_LITTLE);
 		Architecture::Register(ppc_le);
 
-		Architecture* ppc64_le = new PowerpcArchitecture("ppc64_le", LittleEndian);
+		Architecture* ppc64_le = new PowerpcArchitecture("ppc64_le", DISASM_MODE_LITTLE);
 		Architecture::Register(ppc64_le);
 
 		/* calling conventions */
@@ -2497,13 +2497,13 @@ extern "C"
 		conv = new PpcSvr4CallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
 		ppc->SetDefaultCallingConvention(conv);
-		ppc_ps->RegisterCallingConvention(conv);
-		ppc_ps->SetDefaultCallingConvention(conv);
+//		ppc_ps->RegisterCallingConvention(conv);
+//		ppc_ps->SetDefaultCallingConvention(conv);
 		ppc64->RegisterCallingConvention(conv);
 		ppc64->SetDefaultCallingConvention(conv);
 		conv = new PpcLinuxSyscallCallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
-		ppc_ps->RegisterCallingConvention(conv);
+//		ppc_ps->RegisterCallingConvention(conv);
 		ppc64->RegisterCallingConvention(conv);
 
 		conv = new PpcSvr4CallingConvention(ppc_le);
@@ -2517,11 +2517,11 @@ extern "C"
 
 		/* function recognizer */
 		ppc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
-		ppc_ps->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
+//		ppc_ps->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 		ppc_le->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 
 		ppc->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
-		ppc_ps->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
+//		ppc_ps->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_le->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_le->RegisterRelocationHandler("Mach-O", new PpcMachoRelocationHandler());
 		/* call the STATIC RegisterArchitecture with "Mach-O"
@@ -2555,12 +2555,12 @@ extern "C"
 			ppc /* the architecture */
 		);
 
-		BinaryViewType::RegisterArchitecture(
-			"ELF", /* name of the binary view type */
-			EM_PPC, /* id (key in m_arch map) */
-			BigEndian,
-			ppc_ps /* the architecture */
-		);
+//		BinaryViewType::RegisterArchitecture(
+//			"ELF", /* name of the binary view type */
+//			EM_PPC, /* id (key in m_arch map) */
+//			BigEndian,
+//			ppc_ps /* the architecture */
+//		);
 
 		BinaryViewType::RegisterArchitecture(
 			"ELF", /* name of the binary view type */
