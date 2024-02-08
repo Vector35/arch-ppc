@@ -2480,6 +2480,12 @@ extern "C"
 		Architecture* ppc = new PowerpcArchitecture("ppc", BigEndian);
 		Architecture::Register(ppc);
 
+		Architecture* ppc_qpx = new PowerpcArchitecture("ppc_qpx", BigEndian, CS_MODE_QPX);
+		Architecture::Register(ppc_qpx);
+
+		Architecture* ppc_spe = new PowerpcArchitecture("ppc_spe", BigEndian, CS_MODE_SPE);
+		Architecture::Register(ppc_spe);
+
 		Architecture* ppc_ps = new PowerpcArchitecture("ppc_ps", BigEndian, CS_MODE_PS);
 		Architecture::Register(ppc_ps);
 
@@ -2497,12 +2503,18 @@ extern "C"
 		conv = new PpcSvr4CallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
 		ppc->SetDefaultCallingConvention(conv);
+		ppc_qpx->RegisterCallingConvention(conv);
+		ppc_qpx->SetDefaultCallingConvention(conv);
+		ppc_spe->RegisterCallingConvention(conv);
+		ppc_spe->SetDefaultCallingConvention(conv);
 		ppc_ps->RegisterCallingConvention(conv);
 		ppc_ps->SetDefaultCallingConvention(conv);
 		ppc64->RegisterCallingConvention(conv);
 		ppc64->SetDefaultCallingConvention(conv);
 		conv = new PpcLinuxSyscallCallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
+		ppc_qpx->RegisterCallingConvention(conv);
+		ppc_spe->RegisterCallingConvention(conv);
 		ppc_ps->RegisterCallingConvention(conv);
 		ppc64->RegisterCallingConvention(conv);
 
@@ -2517,10 +2529,14 @@ extern "C"
 
 		/* function recognizer */
 		ppc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
+		ppc_qpx->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
+		ppc_spe->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 		ppc_ps->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 		ppc_le->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 
 		ppc->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
+		ppc_qpx->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
+		ppc_spe->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_ps->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_le->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_le->RegisterRelocationHandler("Mach-O", new PpcMachoRelocationHandler());

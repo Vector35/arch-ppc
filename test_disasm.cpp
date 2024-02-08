@@ -129,10 +129,16 @@ int main(int ac, char **av)
 #define BATCH 10000000
 	opterr = 0;
 
-	while ((c = getopt(ac, av, "p")) != -1)
+	while ((c = getopt(ac, av, "qsp")) != -1)
 	{
 		switch (c)
 		{
+		case 'q':
+			CS_MODE_LOCAL = CS_MODE_QPX;
+			break;
+		case 's':
+			CS_MODE_LOCAL = CS_MODE_SPE;
+			break;
 		case 'p':
 			CS_MODE_LOCAL = CS_MODE_PS;
 			break;
