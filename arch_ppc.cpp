@@ -281,7 +281,7 @@ class PowerpcArchitecture: public Architecture
 {
 	private:
 	BNEndianness endian;
-	int CS_MODE_LOCAL;
+	int cs_mode_local;
 
 	/* this can maybe be moved to the API later */
 	BNRegisterInfo RegisterInfo(uint32_t fullWidthReg, size_t offset, size_t size, bool zeroExtend = false)
@@ -300,14 +300,14 @@ class PowerpcArchitecture: public Architecture
 	PowerpcArchitecture(const char* name, BNEndianness endian_): Architecture(name)
 	{
 		endian = endian_;
-		CS_MODE_LOCAL = 0;
+		cs_mode_local = 0;
 	}
 
 	/* initialization list */
 	PowerpcArchitecture(const char* name, BNEndianness endian_, int CS_MODE_): Architecture(name)
 	{
 		endian = endian_;
-		CS_MODE_LOCAL = CS_MODE_;
+		cs_mode_local = CS_MODE_;
 	}
 
 	/*************************************************************************/
@@ -369,7 +369,7 @@ class PowerpcArchitecture: public Architecture
 		}
 
 		/* decompose the instruction to get branch info */
-		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, CS_MODE_LOCAL)) {
+		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, cs_mode_local)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			return false;
 		}
@@ -631,7 +631,7 @@ class PowerpcArchitecture: public Architecture
 		if (DoesQualifyForLocalDisassembly(data))
 			return PerformLocalDisassembly(data, addr, len, result);
 
-		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, CS_MODE_LOCAL)) {
+		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, cs_mode_local)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			goto cleanup;
 		}
@@ -757,7 +757,7 @@ class PowerpcArchitecture: public Architecture
 			goto cleanup;
 		}
 
-		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, CS_MODE_LOCAL)) {
+		if(powerpc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, cs_mode_local)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			il.AddInstruction(il.Undefined());
 			goto cleanup;
@@ -931,7 +931,7 @@ class PowerpcArchitecture: public Architecture
 
 	virtual string GetRegisterName(uint32_t regId) override
 	{
-		const char *result = powerpc_reg_to_str(regId, CS_MODE_LOCAL);
+		const char *result = powerpc_reg_to_str(regId, cs_mode_local);
 
 		if(result == NULL)
 			result = "";

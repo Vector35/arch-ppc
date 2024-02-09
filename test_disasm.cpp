@@ -24,7 +24,7 @@ g++ -std=c++11 -O0 -g -I capstone/include -L./build/capstone test_disasm.cpp dis
 #include "disassembler.h"
 
 int print_errors = 1;
-int CS_MODE_LOCAL = 0;
+int cs_mode_local = 0;
 
 int disas_instr_word(uint32_t instr_word, char *buf)
 {
@@ -35,7 +35,7 @@ int disas_instr_word(uint32_t instr_word, char *buf)
 	struct cs_detail *detail = &(res.detail);
 	struct cs_ppc *ppc = &(detail->ppc);
 
-	if(powerpc_decompose((const uint8_t *)&instr_word, 4, 0, true, &res, CS_MODE_LOCAL)) {
+	if(powerpc_decompose((const uint8_t *)&instr_word, 4, 0, true, &res, cs_mode_local)) {
 		if(print_errors) printf("ERROR: powerpc_decompose()\n");
 		goto cleanup;
 	}
@@ -134,13 +134,13 @@ int main(int ac, char **av)
 		switch (c)
 		{
 		case 'q':
-			CS_MODE_LOCAL = CS_MODE_QPX;
+			cs_mode_local = CS_MODE_QPX;
 			break;
 		case 's':
-			CS_MODE_LOCAL = CS_MODE_SPE;
+			cs_mode_local = CS_MODE_SPE;
 			break;
 		case 'p':
-			CS_MODE_LOCAL = CS_MODE_PS;
+			cs_mode_local = CS_MODE_PS;
 			break;
 		default:
 			usage();
@@ -156,7 +156,7 @@ int main(int ac, char **av)
 
 	disasm_cmd = av[optind];
 
-	powerpc_init(CS_MODE_LOCAL);
+	powerpc_init(cs_mode_local);
 
 	if(!strcasecmp(disasm_cmd, "repl")) {
 		printf("REPL mode!\n");
