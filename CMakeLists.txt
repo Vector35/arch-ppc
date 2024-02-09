@@ -54,14 +54,11 @@ if(BN_INTERNAL_BUILD)
 		RUNTIME_OUTPUT_DIRECTORY ${BN_CORE_PLUGIN_DIR})
 endif()
 
-set(TEST_INLCUDE_LIST )
-set(TEST_LINK_DIRECTORIES )
-set(TEST_LINK_LIBRARIES capstone)
-
-add_executable(test_disasm test_disasm.cpp disassembler.cpp)
-add_executable(test_asm test_asm.cpp assembler.cpp)
-
 if (DEFINED FORCE_TEST)
+	set(TEST_INLCUDE_LIST )
+	set(TEST_LINK_DIRECTORIES )
+	set(TEST_LINK_LIBRARIES capstone)
+	
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		find_package(getopt_for_windows)
 		list(APPEND TEST_INCLUDE_LIST ${getopt_for_windows_INCLUDE_DIR})
@@ -69,6 +66,9 @@ if (DEFINED FORCE_TEST)
 		list(APPEND TEST_LINK_LIBRARIES getopt_for_windows_static)
 	endif()
 
+	add_executable(test_disasm test_disasm.cpp disassembler.cpp)
+	add_executable(test_asm test_asm.cpp assembler.cpp)
+	
 	target_include_directories(test_disasm PRIVATE ${TEST_INCLUDE_LIST})
 	target_link_directories(test_disasm PRIVATE ${TEST_LINK_DIRECTORIES})
 	target_link_libraries(test_disasm PRIVATE ${TEST_LINK_LIBRARIES})
