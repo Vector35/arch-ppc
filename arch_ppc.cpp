@@ -298,8 +298,6 @@ class PowerpcArchitecture: public Architecture
 	PowerpcArchitecture(const char* name, enum disasm_mode mode_): Architecture(name)
 	{
 		mode = mode_;
-
-		powerpc_init();
 	}
 
 	/*************************************************************************/
@@ -356,10 +354,16 @@ class PowerpcArchitecture: public Architecture
 		struct decomp_result res;
 		struct cs_insn *insn = &(res.insn);
 
-		//MYLOG("%s()\n", __func__);
+		MYLOG("%s()\n", __func__);
 
 		if (maxLen < 4) {
 			MYLOG("ERROR: need at least 4 bytes\n");
+			return false;
+		}
+
+		if (powerpc_init() != 0)
+		{
+			MYLOG("ERROR: initializing ppc disassembler\n");
 			return false;
 		}
 
@@ -631,6 +635,12 @@ class PowerpcArchitecture: public Architecture
 		if (DoesQualifyForLocalDisassembly(data))
 			return PerformLocalDisassembly(data, addr, len, result);
 
+		if (powerpc_init() != 0)
+		{
+			MYLOG("ERROR: initializing ppc disassembler\n");
+			goto cleanup;
+		}
+
 		if(powerpc_decompose(data, 4, (uint32_t)addr, &res, mode)) {
 			MYLOG("ERROR: powerpc_decompose()\n");
 			goto cleanup;
@@ -754,6 +764,12 @@ class PowerpcArchitecture: public Architecture
 			il.AddInstruction(il.Unimplemented());
 			rc = true;
 			len = 4;
+			goto cleanup;
+		}
+
+		if (powerpc_init() != 0)
+		{
+			MYLOG("ERROR: initializing ppc disassembler\n");
 			goto cleanup;
 		}
 
@@ -931,7 +947,12 @@ class PowerpcArchitecture: public Architecture
 
 	virtual string GetRegisterName(uint32_t regId) override
 	{
-		const char *result = powerpc_reg_to_str(regId, mode);
+		const char *result = NULL;
+
+		if (powerpc_init() == 0)
+		{
+			result = powerpc_reg_to_str(regId, mode);
+		}
 
 		if(result == NULL)
 			result = "";

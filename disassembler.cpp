@@ -20,6 +20,8 @@ thread_local csh handle_lil = 0; /* for little endian */
 thread_local csh handle_big = 0; /* for big endian */
 thread_local csh handle_big_ps = 0; /* for big endian and paired singles */
 
+/* single-threaded apps only need to call this once before other functions
+ * for multi-threaded apps, each thread needs to call this */
 extern "C" int
 powerpc_init()
 {
@@ -28,7 +30,8 @@ powerpc_init()
 	MYLOG("powerpc_init()\n");
 
 	if(handle_lil && handle_big && handle_big_ps) {
-		MYLOG("ERROR: already initialized!\n");
+		MYLOG("WARNING: already initialized!\n");
+		rc = 0;
 		goto cleanup;
 	}
 
@@ -97,7 +100,7 @@ disasm_mode_to_cs_handle(enum disasm_mode mode)
 			return handle_big_ps;
 		default:
 			MYLOG("ERROR: disasm_mode_to_cs_handle() cannot recognize mode 0x%X\n", mode);
-			return (csh)-1;
+			return (csh)0;
 	}
 }
 
@@ -151,10 +154,11 @@ powerpc_decompose(const uint8_t *data, int size, uint32_t addr,
 
 	cs_insn *insn = 0; /* instruction information
 					cs_disasm() will allocate array of cs_insn here */
+	csh handle = 0;
 
 	/* decide which capstone handle to use */
-	csh handle = disasm_mode_to_cs_handle(mode);
-	if (handle == (csh)-1) {
+	handle = disasm_mode_to_cs_handle(mode);
+	if (handle == (csh)0) {
 		MYLOG("ERROR: disasm_mode_to_cs_handle() returned -1\n");
 		goto cleanup;
 	}
@@ -206,12 +210,14 @@ powerpc_disassemble(struct decomp_result *res, char *buf, size_t len)
 extern "C" const char *
 powerpc_reg_to_str(uint32_t rid, enum disasm_mode mode)
 {
-	powerpc_init();
 	MYLOG("%s(%d, %d)\n", __func__, rid, mode);
 
 	csh handle = disasm_mode_to_cs_handle(mode);
-	if (handle == (csh)-1)
+	if (handle == (csh)0)
+	{
+		MYLOG("%s(): couldn't get handle\n", __func__);
 		return "(ERROR)";
+	}
 
 	MYLOG("%s(%d, %d) returns %s\n", __func__, rid, mode, cs_reg_name(handle, rid));
 	return cs_reg_name(handle, rid);
