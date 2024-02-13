@@ -2501,8 +2501,8 @@ extern "C"
 		Architecture* ppc = new PowerpcArchitecture("ppc", DISASM_MODE_BIG);
 		Architecture::Register(ppc);
 
-//		Architecture* ppc_ps = new PowerpcArchitecture("ppc_ps", DISASM_MODE_BIG_PAIRED_SINGLES);
-//		Architecture::Register(ppc_ps);
+		Architecture* ppc_ps = new PowerpcArchitecture("ppc_ps", DISASM_MODE_BIG_PAIRED_SINGLES);
+		Architecture::Register(ppc_ps);
 
 		Architecture* ppc64 = new PowerpcArchitecture("ppc64", DISASM_MODE_BIG);
 		Architecture::Register(ppc64);
@@ -2518,13 +2518,13 @@ extern "C"
 		conv = new PpcSvr4CallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
 		ppc->SetDefaultCallingConvention(conv);
-//		ppc_ps->RegisterCallingConvention(conv);
-//		ppc_ps->SetDefaultCallingConvention(conv);
+		ppc_ps->RegisterCallingConvention(conv);
+		ppc_ps->SetDefaultCallingConvention(conv);
 		ppc64->RegisterCallingConvention(conv);
 		ppc64->SetDefaultCallingConvention(conv);
 		conv = new PpcLinuxSyscallCallingConvention(ppc);
 		ppc->RegisterCallingConvention(conv);
-//		ppc_ps->RegisterCallingConvention(conv);
+		ppc_ps->RegisterCallingConvention(conv);
 		ppc64->RegisterCallingConvention(conv);
 
 		conv = new PpcSvr4CallingConvention(ppc_le);
@@ -2538,11 +2538,11 @@ extern "C"
 
 		/* function recognizer */
 		ppc->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
-//		ppc_ps->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
+		ppc_ps->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 		ppc_le->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
 
 		ppc->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
-//		ppc_ps->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
+		ppc_ps->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_le->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
 		ppc_le->RegisterRelocationHandler("Mach-O", new PpcMachoRelocationHandler());
 		/* call the STATIC RegisterArchitecture with "Mach-O"
@@ -2576,6 +2576,7 @@ extern "C"
 			ppc /* the architecture */
 		);
 
+//		/* How can we distinguish this from the already existing ELF+EM_PPC+BigEndian registration? */
 //		BinaryViewType::RegisterArchitecture(
 //			"ELF", /* name of the binary view type */
 //			EM_PPC, /* id (key in m_arch map) */
